@@ -1,10 +1,10 @@
+import utm
 import os
 import re
 import shutil
 import urllib
 
 import pandas as pd
-import utm
 
 from calendar import monthrange
 from dateutil import rrule
@@ -114,6 +114,7 @@ def all_specifiers(zones, years, extension, dir=None):
                 if dir is not None:
                     path = os.path.join(dir, specifier)
                     paths.append(path)
+                break
 
     if dir is not None:
         all_zym = {'paths': paths, 'specifiers': specifiers}

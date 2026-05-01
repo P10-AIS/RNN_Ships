@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 import pandas as pd
-from pydap.client import open_url, open_dods
+from pydap.client import open_url
 
 from config import config
 from config.dataset_config import datasets
@@ -160,7 +160,7 @@ class Downloader(ProcessingStep):
                     f'[{lon_min}:1:{lon_max}]'
                 )
                 # Open connection to filtered url
-                data = open_dods(filtered_url)
+                data = open_url(filtered_url)
 
                 # Download data
                 data = (np.array(data.data))[0,0,:,0]

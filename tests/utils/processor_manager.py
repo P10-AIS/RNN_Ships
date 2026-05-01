@@ -21,7 +21,7 @@ class ProcessorManager():
 
     Treats each GPU as a unique processor, but all CPUs as a single processor
     """
-    def __init__(self, save_dir='/home/isaac/data/', debug=False):
+    def __init__(self, save_dir='./data/', debug=False):
         self.processor_list_fp = os.path.join(save_dir, '.processor_list.json')
         self.my_processor = None
         self.debug = debug

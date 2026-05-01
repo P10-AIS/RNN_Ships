@@ -1,0 +1,38 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+    "name": "RNN_SHIP CPU Dev Container",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "build": {
+        "dockerfile": "../../Dockerfile",
+        "context": "../.."
+    },
+    "remoteUser": "root",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vsliveshare.vsliveshare",
+                "ReprEng.csv",
+                "ms-python.vscode-python-envs",
+                "ms-python.vscode-pylance",
+                "ms-python.python",
+                "ms-python.debugpy",
+                "ms-python.autopep8"
+            ]
+        }
+    },
+    "runArgs": [
+        // "--gpus",
+        // "all",
+        // "--shm-size",
+        // "96gb",
+        // "--network",
+        // "trajviz_TrajNet"
+    ],
+    // "mounts": [
+    //   "type=bind,source=/mnt/dataimputationgroup/P10/Data,target=${containerWorkspaceFolder}/Data",
+    //   "type=bind,source=/mnt/dataimputationgroup/P10/Outputs,target=${containerWorkspaceFolder}/Outputs"
+    // ],
+    "shutdownAction": "none"
+    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+}

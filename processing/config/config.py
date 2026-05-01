@@ -4,7 +4,7 @@ import pandas as pd
 
 # Set a base directory to use for data storage. You should change this value.
 global data_directory
-data_directory = '/home/isaac/data/'
+data_directory = '../data/'
 
 global dataset_config
 
@@ -12,7 +12,7 @@ global dataset_config
 # url and will also need to be preprocessed slightly differently - check the ais_data_faq_from_marine_cadastre.pdf in
 # resources_and_information for details.
 global start_year
-start_year = 2015
+start_year = 2019
 assert start_year >= 2015
 
 global end_year

@@ -29,7 +29,7 @@ length_into_the_future = int(3 * 60 * 60 / interpolation_time_gap) - 1
 
 # Set a base directory to use for data storage. You should change this value.
 global data_directory
-data_directory = '/home/isaac/data/'
+data_directory = './data/'
 
 global box_and_year_dir
 
