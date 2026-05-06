@@ -7,7 +7,7 @@
 # python interpolator.py california_coast -l 4 -s &&
 
 # ## RUN ONLY AFTER SETTING DBSCAN PARAMETER VALUES
-# python destination_appender.py california_coast -l 4 -s &&
+# # python destination_appender.py california_coast -l 4 -s &&
 # python current_appender.py california_coast -l 4 -s &&
 # python sliding_window.py california_coast -l 4 -s &&
 python formatter.py california_coast -l 4 -s

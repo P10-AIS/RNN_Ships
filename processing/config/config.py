@@ -89,7 +89,7 @@ currents_variables = ['water_u', 'water_v']
 # Categorical columns that need to be one hot encoded. Only change this if you change preprocessing to add in other
 # columns.
 global categorical_columns
-categorical_columns = ['vessel_group', 'destination_cluster']
+categorical_columns = ['vessel_group']
 
 # Used for preprocessing of currents dataset. All other values have been deprecated
 global currents_window

@@ -313,3 +313,21 @@ class DiskArray():
 
             del array
             gc.collect()
+
+    def slice_last_axis(self, n):
+        """
+        Slice the last axis of the DiskArray to the first n columns
+
+        :param n: Number of columns to keep
+        :return:
+        """
+        self.nbytes = 0
+        self.shape = None
+        for t in self.temp_paths:
+            array = self._load_partition_from_path(t.name)
+            array = array[:, :, :n]
+            self._update_basic_info(array)
+            self._save_partition_to_path(t.name, array)
+
+            del array
+            gc.collect()

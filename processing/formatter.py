@@ -73,6 +73,7 @@ class Formatter(ProcessingStep):
         os.mkdir(self.to_dir)
 
         # Save feature metadata
+        self.features = self.features.iloc[:9]
         self.features.to_csv(os.path.join(self.to_dir, 'features.csv'))
 
         for dataset_name in self.dataset_names:
@@ -82,7 +83,7 @@ class Formatter(ProcessingStep):
             set_dir = os.path.join(self.to_dir, dataset_name)
             os.mkdir(set_dir)
 
-            df = self.datasets[dataset_name]
+            df = self.datasets[dataset_name].iloc[:, :9]
 
             if 'long_term' in dataset_name:
                 timesteps_into_the_future = self.timesteps_into_the_future

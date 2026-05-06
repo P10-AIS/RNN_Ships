@@ -31,17 +31,20 @@ def read_ts_data(directory, time_gap, x_or_y, dtype=None, conserve_memory=False)
     else:
         path = os.path.join(directory, f'{time_gap}_min_time_gap_{x_or_y}')
         files = os.listdir(path)
-        files = np.array(files)[np.argsort([int(n.split('.')[0]) for n in files])].tolist()
+        files = np.array(files)[np.argsort(
+            [int(n.split('.')[0]) for n in files])].tolist()
         if dtype is None:
-            dtype = np.load(os.path.join(path, files[0]),allow_pickle=True).dtype
+            dtype = np.load(os.path.join(
+                path, files[0]), allow_pickle=True).dtype
         if conserve_memory:
             data = DiskArray()
             for f in files:
-                arr = np.load(os.path.join(path, f), allow_pickle=True).astype(dtype)
+                arr = np.load(os.path.join(path, f),
+                              allow_pickle=True).astype(dtype)
                 data.add_array(arr)
         else:
-            data = np.concatenate([np.load(os.path.join(path, f),allow_pickle=True).astype(dtype) for f in files])
-
+            data = np.concatenate(
+                [np.load(os.path.join(path, f), allow_pickle=True).astype(dtype) for f in files])
 
     return data
 
@@ -59,7 +62,8 @@ def add_distance_traveled(X, lat_lon_idxs, dt_idx):
     """
     start_location = X[:, 0, lat_lon_idxs]
     end_location = X[:, -1, lat_lon_idxs]
-    distance_traveled = haversine_vector(start_location, end_location, Unit.KILOMETERS)
+    distance_traveled = haversine_vector(
+        start_location, end_location, Unit.KILOMETERS)
 
     # Get into correct shape
     distance_traveled = np.stack([distance_traveled] * X.shape[1], axis=1)
@@ -101,19 +105,21 @@ def add_stat(X, col_idx, which):
     :return:
     """
     if which == 'min':
-        mins = np.stack([X[:,:,col_idx].min(axis=1)] * X.shape[1],axis=1)
+        mins = np.stack([X[:, :, col_idx].min(axis=1)] * X.shape[1], axis=1)
         min_idx = X.shape[2]
         X = np.insert(X, min_idx, mins, axis=2)
     elif which == 'median':
-        medians = np.stack([np.median(X[:,:,col_idx],axis=1)] * X.shape[1],axis=1)
+        medians = np.stack(
+            [np.median(X[:, :, col_idx], axis=1)] * X.shape[1], axis=1)
         median_idx = X.shape[2]
         X = np.insert(X, median_idx, medians, axis=2)
     elif which == 'max':
-        maxes = np.stack([X[:,:,col_idx].max(axis=1)] * X.shape[1],axis=1)
+        maxes = np.stack([X[:, :, col_idx].max(axis=1)] * X.shape[1], axis=1)
         max_idx = X.shape[2]
         X = np.insert(X, max_idx, maxes, axis=2)
 
     return X
+
 
 def _calc_time_stats_1d(data, stat):
     """
@@ -144,9 +150,11 @@ def add_time_stats(data, datetime_col, hour_idx, dow_idx):
     :param dow_idx: Index where day of week information should be included
     :return:
     """
-    hour = np.apply_along_axis(_calc_time_stats_1d, 0, data[...,datetime_col], 'hour')
+    hour = np.apply_along_axis(
+        _calc_time_stats_1d, 0, data[..., datetime_col], 'hour')
 
-    day_of_week = np.apply_along_axis(_calc_time_stats_1d, 0, data[...,datetime_col], 'day_of_week')
+    day_of_week = np.apply_along_axis(
+        _calc_time_stats_1d, 0, data[..., datetime_col], 'day_of_week')
 
     data = np.insert(data, hour_idx, hour, axis=-1)
     data = np.insert(data, dow_idx, day_of_week, axis=-1)
@@ -167,7 +175,7 @@ def split_X_for_fusion(X, recurrent_idxs):
     :return:
     """
     recurrent_part = X[:, :, recurrent_idxs]
-    dense_part = X[:,-1,:]
+    dense_part = X[:, -1, :]
     dense_part = np.delete(dense_part, recurrent_idxs, axis=-1)
     return [recurrent_part, dense_part]
 
@@ -182,15 +190,20 @@ def reshape_weather_data(weather_data, weather_only_cols):
     :param weather_only_cols: Columns that contain weather data
     :return:
     """
-    imputed_col = weather_only_cols[weather_only_cols['column'] == 'weather_is_imputed'].copy()
+    imputed_col = weather_only_cols[weather_only_cols['column']
+                                    == 'weather_is_imputed'].copy()
 
-    water_u_v = weather_only_cols[weather_only_cols['column'] != 'weather_is_imputed'].copy()
-    water_u_v['lat_lons'] = water_u_v['column'].str.replace('_water_[uv]','',regex=True).str.split('_')
+    water_u_v = weather_only_cols[weather_only_cols['column']
+                                  != 'weather_is_imputed'].copy()
+    water_u_v['lat_lons'] = water_u_v['column'].str.replace(
+        '_water_[uv]', '', regex=True).str.split('_')
     water_u_v['lat'] = [float(ll[0]) for ll in water_u_v['lat_lons']]
     water_u_v['lon'] = [float(ll[1]) for ll in water_u_v['lat_lons']]
 
-    water_u_columns = water_u_v[water_u_v['column'].str.contains('water_u')].copy()
-    water_v_columns = water_u_v[water_u_v['column'].str.contains('water_v')].copy()
+    water_u_columns = water_u_v[water_u_v['column'].str.contains(
+        'water_u')].copy()
+    water_v_columns = water_u_v[water_u_v['column'].str.contains(
+        'water_v')].copy()
 
     data_len = len(weather_data)
 
@@ -204,7 +217,7 @@ def reshape_weather_data(weather_data, weather_only_cols):
     water_u_data = []
     for lat in lats:
         slice = water_u_columns[water_u_columns['lat'] == lat]
-        lat_row = np.empty((data_len, num_lons),dtype=weather_data.dtype)
+        lat_row = np.empty((data_len, num_lons), dtype=weather_data.dtype)
         lat_row[:] = np.nan
         for i, lon in enumerate(lons):
             lat_lon_idx = slice[slice['lon'] == lon]
@@ -212,14 +225,14 @@ def reshape_weather_data(weather_data, weather_only_cols):
                 continue
             elif len(lat_lon_idx) == 1:
                 idx = lat_lon_idx.index[0]
-                lat_row[:,i] = weather_data[:,idx]
+                lat_row[:, i] = weather_data[:, idx]
         water_u_data.append(lat_row)
-    water_u_data = np.stack(water_u_data,axis=-1)
+    water_u_data = np.stack(water_u_data, axis=-1)
 
     water_v_data = []
     for lat in lats:
         slice = water_v_columns[water_v_columns['lat'] == lat]
-        lat_row = np.empty((data_len, num_lons),dtype=weather_data.dtype)
+        lat_row = np.empty((data_len, num_lons), dtype=weather_data.dtype)
         lat_row[:] = np.nan
         for i, lon in enumerate(lons):
             lat_lon_idx = slice[slice['lon'] == lon]
@@ -227,14 +240,14 @@ def reshape_weather_data(weather_data, weather_only_cols):
                 continue
             elif len(lat_lon_idx) == 1:
                 idx = lat_lon_idx.index[0]
-                lat_row[:,i] = weather_data[:,idx]
+                lat_row[:, i] = weather_data[:, idx]
         water_v_data.append(lat_row)
-    water_v_data = np.stack(water_v_data,axis=-1)
-
+    water_v_data = np.stack(water_v_data, axis=-1)
 
     # Create indicators for if a) the the location is over land, (represented by a 1) b) the current at the location has
     # been imputed, (represented by a 0.5) or c) the location is an actual value (represented by a 0)
-    imputed = np.stack([np.stack([weather_data[..., imputed_col.index[0]].astype(bool)] * len(lons), axis = -1)] * len(lats), axis=-1)
+    imputed = np.stack([np.stack([weather_data[..., imputed_col.index[0]].astype(
+        bool)] * len(lons), axis=-1)] * len(lats), axis=-1)
     coast = np.isnan(water_u_data)
 
     imputation_channel = coast.astype(weather_data.dtype)
@@ -244,7 +257,6 @@ def reshape_weather_data(weather_data, weather_only_cols):
     water_v_data[np.isnan(water_v_data)] = 0.5
 
     return np.stack([water_u_data, water_v_data, imputation_channel], axis=-1)
-
 
 
 def _find_current_col_idx(col, columns):
@@ -261,7 +273,8 @@ def _find_current_col_idx(col, columns):
     # counting up how many columns (that we haven't deleted yet) are in the dataset before it
     idx_in_columns_df = np.where(columns['column'] == col)[0][0]
     if not columns['being_used'].iloc[idx_in_columns_df]:
-        raise ValueError(f'Columns {col} is trying to be accessed even though it is not currently in the dataframe')
+        raise ValueError(
+            f'Columns {col} is trying to be accessed even though it is not currently in the dataframe')
     current_idx = (columns['being_used'][:idx_in_columns_df]).sum()
     return int(current_idx)
 
@@ -291,10 +304,12 @@ def apply_transformations(dataset, x_or_y, transformations, normalizer, normaliz
                 dataset = _remove_columns(dataset, transformation)
             elif transformation['function'] == 'normalize':
                 assert type(dataset) == np.ndarray
-                dataset = normalizer.normalize_data(dataset, normalization_factors)
+                dataset = normalizer.normalize_data(
+                    dataset, normalization_factors)
             elif transformation['function'] == 'split_for_fusion':
                 assert type(dataset) == np.ndarray
-                dataset = split_X_for_fusion(dataset, transformation['indexes'])
+                dataset = split_X_for_fusion(
+                    dataset, transformation['indexes'])
             elif transformation['function'] == 'select_columns':
                 assert type(dataset) == np.ndarray
                 cols_to_select = transformation['indexes']
@@ -313,13 +328,16 @@ def apply_transformations(dataset, x_or_y, transformations, normalizer, normaliz
                     trajs = dataset[:, :, transformation['lat_lon_idxs']]
                     lats = [trajs[i, :, 0].tolist() for i in range(len(trajs))]
                     lons = [trajs[i, :, 1].tolist() for i in range(len(trajs))]
-                    dataset = pd.DataFrame(dataset[:,-1,:], columns=transformation['df_columns'])
+                    dataset = pd.DataFrame(
+                        dataset[:, -1, :], columns=transformation['df_columns'])
                     dataset['lats'] = lats
                     dataset['lons'] = lons
                 else:
-                    dataset = pd.DataFrame(dataset, columns=transformation['df_columns'])
+                    dataset = pd.DataFrame(
+                        dataset, columns=transformation['df_columns'])
 
     return dataset
+
 
 def get_bearing(lat1, long1, lat2, long2):
     """
@@ -338,12 +356,13 @@ def get_bearing(lat1, long1, lat2, long2):
          - np.sin(np.radians(lat1))
          * np.cos(np.radians(lat2))
          * np.cos(np.radians(dLon)))
-    brng = np.arctan2(x,y)
+    brng = np.arctan2(x, y)
     brng = np.degrees(brng)
 
     brng %= 360
 
     return brng
+
 
 def _remove_columns(dataset, transformation):
     """
@@ -354,9 +373,10 @@ def _remove_columns(dataset, transformation):
     :return:
     """
     if type(dataset) == pd.DataFrame:
-        return dataset.drop(columns = transformation['columns'])
+        return dataset.drop(columns=transformation['columns'])
     else:
         return np.delete(dataset, transformation['indexes'], axis=-1)
+
 
 def _add_columns(dataset, transformation):
     """
@@ -373,7 +393,7 @@ def _add_columns(dataset, transformation):
                                  *transformation['indexes'])
     elif 'sog_median' in transformation['columns']:
         assert type(dataset) == np.ndarray
-        for col, idx in zip(transformation['columns'],transformation['indexes']):
+        for col, idx in zip(transformation['columns'], transformation['indexes']):
             col, summary = col.split('_')
             dataset = add_stat(dataset,
                                transformation[f'{col}_index'],
@@ -387,46 +407,51 @@ def _add_columns(dataset, transformation):
         assert type(dataset) == np.ndarray
         for c, idx in zip(transformation['columns'], transformation['indexes']):
             if 'mean' in c:
-                stat = np.abs(dataset[...,transformation['idx_to_summarize']]).mean(axis=-1)
+                stat = np.abs(
+                    dataset[..., transformation['idx_to_summarize']]).mean(axis=-1)
             elif 'std' in c:
-                stat = dataset[...,transformation['idx_to_summarize']].std(axis=-1)
+                stat = dataset[..., transformation['idx_to_summarize']].std(
+                    axis=-1)
             else:
-                raise ValueError (f'Unknown column to calculate {c}')
+                raise ValueError(f'Unknown column to calculate {c}')
             dataset = np.insert(dataset, idx, stat, axis=-1)
     elif 'mean_current_magnitude' in transformation['columns']:
         assert type(dataset) == np.ndarray
-        magnitudes = [np.sqrt(np.sum(np.power(dataset[...,p], 2) , axis = -1)) for p in transformation['idx_pairs']]
+        magnitudes = [np.sqrt(np.sum(np.power(dataset[..., p], 2), axis=-1))
+                      for p in transformation['idx_pairs']]
         for c, idx in zip(transformation['columns'], transformation['indexes']):
             if 'mean' in c:
-                stat = np.mean(np.array(magnitudes), axis= 0)
+                stat = np.mean(np.array(magnitudes), axis=0)
             elif 'std' in c:
-                stat = np.std(np.array(magnitudes), axis= 0)
+                stat = np.std(np.array(magnitudes), axis=0)
             else:
-                raise ValueError (f'Unknown column to calculate {c}')
+                raise ValueError(f'Unknown column to calculate {c}')
             dataset = np.insert(dataset, idx, stat, axis=-1)
     elif transformation['columns'] in [['vessel_group'], ['destination_cluster']]:
         assert type(dataset) == pd.DataFrame
         vals = np.empty((len(dataset)), dtype='str')
         vals[:] = ''
         for with_prefix in transformation['ohe_cols']:
-            without_prefix = with_prefix.replace(transformation['columns'][0] + '_', '')
-            vals = np.char.add(vals, np.where(dataset[with_prefix], without_prefix, '').astype('str'))
+            without_prefix = with_prefix.replace(
+                transformation['columns'][0] + '_', '')
+            vals = np.char.add(vals, np.where(
+                dataset[with_prefix], without_prefix, '').astype('str'))
 
         dataset[transformation['columns'][0]] = vals
-    elif transformation['columns'] == ['mean_bearing_angle','std_bearing_angle']:
+    elif transformation['columns'] == ['mean_bearing_angle', 'std_bearing_angle']:
         assert type(dataset) == np.ndarray
-        lats = dataset[...,transformation['lat_idx']]
-        lons = dataset[...,transformation['lon_idx']]
+        lats = dataset[..., transformation['lat_idx']]
+        lons = dataset[..., transformation['lon_idx']]
         angles = []
         for i in range(lats.shape[1] - 1):
-            angles += [get_bearing(lats[...,i],lons[...,i],
-                                   lats[...,i+1],lons[...,i+1])]
+            angles += [get_bearing(lats[..., i], lons[..., i],
+                                   lats[..., i+1], lons[..., i+1])]
         angles = np.stack(angles).T
         for c, idx in zip(transformation['columns'], transformation['indexes']):
             if c == 'mean_bearing_angle':
-                stat = np.mean(angles, axis= 1)
+                stat = np.mean(angles, axis=1)
             elif c == 'std_bearing_angle':
-                stat = np.std(angles, axis= 1)
+                stat = np.std(angles, axis=1)
 
             stat = np.stack([stat] * dataset.shape[1]).T
             dataset = np.insert(dataset, idx, stat, axis=-1)
@@ -436,53 +461,22 @@ def _add_columns(dataset, transformation):
             binned = (dataset[original_c] // bin_size * bin_size).astype(int)
             if bin_cutoff is not None:
                 binned = np.where(binned < bin_cutoff,
-                                  '[' + binned.astype(str) + ', ' + (binned + bin_size).astype(str) + ')',
+                                  '[' + binned.astype(str) + ', ' +
+                                  (binned + bin_size).astype(str) + ')',
                                   f'[{bin_cutoff}+]')
             else:
-                binned = '[' + binned.astype(str) + ', ' + (binned + bin_size).astype(str) + ')'
+                binned = '[' + binned.astype(str) + ', ' + \
+                    (binned + bin_size).astype(str) + ')'
             dataset[new_c] = binned
     elif '50_closest_weather_magnitude_mean' in transformation['columns']:
         assert type(dataset) == pd.DataFrame
         dataset.index.name = 'id'
         dataset = dataset.reset_index()
 
-        water_u_cols = [w for w in dataset.columns if 'water_u' in w and not ('mean' in w or 'std' in w)]
-        water_v_cols = [w for w in dataset.columns if 'water_v' in w and not ('mean' in w or 'std' in w)]
-
-        u = pd.melt(dataset, id_vars=['id', 'lat', 'lon'], value_vars=water_u_cols).rename(
-            columns={'value': 'water_u'})
-        u['variable'] = u['variable'].str.replace('_water_u','')
-        v = pd.melt(dataset, id_vars=['id', 'lat', 'lon'], value_vars=water_v_cols).rename(
-            columns={'value': 'water_v'})
-        v['variable'] = u['variable'].str.replace('_water_v','')
-
-        magnitudes = u.merge(v, on=['id','variable','lat','lon'])
-        magnitudes['magnitude'] = np.sqrt(magnitudes['water_v'] ** 2 + magnitudes['water_u'] ** 2)
-        magnitudes = magnitudes.drop(columns=['water_u','water_v'])
-        magnitudes['weather_lat'] = magnitudes['variable'].str.split('_').str[0].astype(float)
-        magnitudes['weather_lon'] = magnitudes['variable'].str.split('_').str[1].astype(float)
-        magnitudes = magnitudes.drop(columns='variable')
-        magnitudes['distance_to_weather'] = haversine_vector(magnitudes[['lat','lon']], magnitudes[['weather_lat','weather_lon']])
-        magnitudes = magnitudes.sort_values(['id','distance_to_weather']).reset_index(drop=True)
-
-        n = 50
-        closest = magnitudes.groupby('id')[['id','magnitude']].head(n).groupby('id').agg(['mean','std'])
-        closest.columns = [f'{n}_closest_weather_magnitude_mean',f'{n}_closest_weather_magnitude_std']
-
-        for n in [25, 10, 5, 1]:
-            c = magnitudes.groupby('id')[['id', 'magnitude']].head(n).groupby('id').agg(['mean', 'std'])
-            c.columns = [f'{n}_closest_weather_magnitude_mean', f'{n}_closest_weather_magnitude_std']
-            closest = closest.merge(c, on = 'id')
-        closest = closest.drop(columns=['1_closest_weather_magnitude_std'])
-        dataset = dataset.merge(closest, on = 'id')
-        dataset = dataset.drop(columns='id')
-    elif 'closest_weather_us' in transformation['columns']:
-        assert type(dataset) == pd.DataFrame
-        dataset.index.name = 'id'
-        dataset = dataset.reset_index()
-
-        water_u_cols = [w for w in dataset.columns if 'water_u' in w and not ('mean' in w or 'std' in w)]
-        water_v_cols = [w for w in dataset.columns if 'water_v' in w and not ('mean' in w or 'std' in w)]
+        water_u_cols = [w for w in dataset.columns if 'water_u' in w and not (
+            'mean' in w or 'std' in w)]
+        water_v_cols = [w for w in dataset.columns if 'water_v' in w and not (
+            'mean' in w or 'std' in w)]
 
         u = pd.melt(dataset, id_vars=['id', 'lat', 'lon'], value_vars=water_u_cols).rename(
             columns={'value': 'water_u'})
@@ -492,28 +486,79 @@ def _add_columns(dataset, transformation):
         v['variable'] = u['variable'].str.replace('_water_v', '')
 
         magnitudes = u.merge(v, on=['id', 'variable', 'lat', 'lon'])
-        magnitudes['weather_lat'] = magnitudes['variable'].str.split('_').str[0].astype(float)
-        magnitudes['weather_lon'] = magnitudes['variable'].str.split('_').str[1].astype(float)
+        magnitudes['magnitude'] = np.sqrt(
+            magnitudes['water_v'] ** 2 + magnitudes['water_u'] ** 2)
+        magnitudes = magnitudes.drop(columns=['water_u', 'water_v'])
+        magnitudes['weather_lat'] = magnitudes['variable'].str.split(
+            '_').str[0].astype(float)
+        magnitudes['weather_lon'] = magnitudes['variable'].str.split(
+            '_').str[1].astype(float)
+        magnitudes = magnitudes.drop(columns='variable')
+        magnitudes['distance_to_weather'] = haversine_vector(
+            magnitudes[['lat', 'lon']], magnitudes[['weather_lat', 'weather_lon']])
+        magnitudes = magnitudes.sort_values(
+            ['id', 'distance_to_weather']).reset_index(drop=True)
+
+        n = 50
+        closest = magnitudes.groupby('id')[['id', 'magnitude']].head(
+            n).groupby('id').agg(['mean', 'std'])
+        closest.columns = [
+            f'{n}_closest_weather_magnitude_mean', f'{n}_closest_weather_magnitude_std']
+
+        for n in [25, 10, 5, 1]:
+            c = magnitudes.groupby('id')[['id', 'magnitude']].head(
+                n).groupby('id').agg(['mean', 'std'])
+            c.columns = [f'{n}_closest_weather_magnitude_mean',
+                         f'{n}_closest_weather_magnitude_std']
+            closest = closest.merge(c, on='id')
+        closest = closest.drop(columns=['1_closest_weather_magnitude_std'])
+        dataset = dataset.merge(closest, on='id')
+        dataset = dataset.drop(columns='id')
+    elif 'closest_weather_us' in transformation['columns']:
+        assert type(dataset) == pd.DataFrame
+        dataset.index.name = 'id'
+        dataset = dataset.reset_index()
+
+        water_u_cols = [w for w in dataset.columns if 'water_u' in w and not (
+            'mean' in w or 'std' in w)]
+        water_v_cols = [w for w in dataset.columns if 'water_v' in w and not (
+            'mean' in w or 'std' in w)]
+
+        u = pd.melt(dataset, id_vars=['id', 'lat', 'lon'], value_vars=water_u_cols).rename(
+            columns={'value': 'water_u'})
+        u['variable'] = u['variable'].str.replace('_water_u', '')
+        v = pd.melt(dataset, id_vars=['id', 'lat', 'lon'], value_vars=water_v_cols).rename(
+            columns={'value': 'water_v'})
+        v['variable'] = u['variable'].str.replace('_water_v', '')
+
+        magnitudes = u.merge(v, on=['id', 'variable', 'lat', 'lon'])
+        magnitudes['weather_lat'] = magnitudes['variable'].str.split(
+            '_').str[0].astype(float)
+        magnitudes['weather_lon'] = magnitudes['variable'].str.split(
+            '_').str[1].astype(float)
         magnitudes = magnitudes.drop(columns='variable')
         magnitudes['distance_to_weather'] = haversine_vector(magnitudes[['lat', 'lon']],
                                                              magnitudes[['weather_lat', 'weather_lon']])
-        magnitudes = magnitudes.sort_values(['id', 'distance_to_weather']).reset_index(drop=True)
+        magnitudes = magnitudes.sort_values(
+            ['id', 'distance_to_weather']).reset_index(drop=True)
 
         n = 35
-        closest = magnitudes.groupby('id')[['id','water_u', 'water_v', 'weather_lat', 'weather_lon','distance_to_weather']].head(n)
-        closest['rank'] = closest.groupby('id')['distance_to_weather'].rank('min').astype(int)
+        closest = magnitudes.groupby('id')[
+            ['id', 'water_u', 'water_v', 'weather_lat', 'weather_lon', 'distance_to_weather']].head(n)
+        closest['rank'] = closest.groupby(
+            'id')['distance_to_weather'].rank('min').astype(int)
         closest = closest.drop(columns='distance_to_weather')
-        closest.columns = ['id','u', 'v', 'lat', 'lon','rank']
+        closest.columns = ['id', 'u', 'v', 'lat', 'lon', 'rank']
 
-        closest = closest.pivot(index='id', columns='rank', values=['u', 'v', 'lat', 'lon'])
-        closest.columns = [f'{i}_closest_weather_{v}' for v, i in closest.columns]
-        for col in ['u','v','lat','lon']:
-            closest[f'closest_weather_{col}s'] = closest[[f'{i}_closest_weather_{col}' for i in range(1, n + 1)]].values.tolist()
+        closest = closest.pivot(index='id', columns='rank', values=[
+                                'u', 'v', 'lat', 'lon'])
+        closest.columns = [
+            f'{i}_closest_weather_{v}' for v, i in closest.columns]
+        for col in ['u', 'v', 'lat', 'lon']:
+            closest[f'closest_weather_{col}s'] = closest[[
+                f'{i}_closest_weather_{col}' for i in range(1, n + 1)]].values.tolist()
         closest = closest[transformation['columns']]
-        dataset = dataset.merge(closest, on = 'id')
+        dataset = dataset.merge(closest, on='id')
         dataset = dataset.drop(columns='id')
 
-
-
     return dataset
-

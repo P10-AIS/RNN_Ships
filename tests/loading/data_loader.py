@@ -219,7 +219,7 @@ class DataLoader():
         self._calculate_normalization_factors()
         self._save_run_config_to_cache()
 
-    def load_set(self, time_period, sliding_window_method, x_or_y, hard_reload=False, for_analysis=False):
+    def load_set(self, time_period, sliding_window_method, x_or_y, hard_reload=True, for_analysis=False):
         """
         Load a dataset, based on the run config
 
@@ -671,6 +671,7 @@ class DataLoader():
 
         self.dataset = loading.read_ts_data(
             data_dir, self.run_config['time'], x_or_y, dtype='float32', conserve_memory=self.conserve_memory)
+
         transformations = self.run_config['transformations']
 
         # If this is the test set for the iterative model, we want *ALL* Y timestamps, instead of just the most recent

@@ -21,7 +21,7 @@ class WeatherAppender(ProcessingStep):
     def __init__(self):
         super().__init__()
         self._define_directories(
-            from_name='interpolated_with_destination' +
+            from_name='interpolated' +
             ('_debug' if args.debug else ''),
             to_name='interpolated_with_currents_stride_3' +
             ('_debug' if args.debug else '')

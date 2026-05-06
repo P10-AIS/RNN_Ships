@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     utils.set_seed(args.seed)
 
-    loader = DataLoader(config, args, conserve_memory=True)
+    loader = DataLoader(config, args, conserve_memory=True, hard_reload=True)
     train_Y_labels = loader.load_set('train', 'train', 'y')
     train_X = loader.load_set('train', 'train', 'x')
 
