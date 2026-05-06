@@ -10,6 +10,7 @@ from calendar import monthrange
 from dateutil import rrule
 from datetime import datetime
 
+
 def get_zones_from_coordinates(corner_1, corner_2):
     """
     Get UTM zones to download, based on lat/lon coordinates
@@ -21,9 +22,11 @@ def get_zones_from_coordinates(corner_1, corner_2):
     _, _, zone_1, _ = utm.from_latlon(*corner_1)
     _, _, zone_2, _ = utm.from_latlon(*corner_2)
     if zone_1 > 19:
-        raise ValueError(f'Corner 1 {corner_1} is outside data available on MarineCadastre.gov')
+        raise ValueError(
+            f'Corner 1 {corner_1} is outside data available on MarineCadastre.gov')
     if zone_2 > 19:
-        raise ValueError(f'Corner 2 {corner_2} is outside data available on MarineCadastre.gov')
+        raise ValueError(
+            f'Corner 2 {corner_2} is outside data available on MarineCadastre.gov')
     zones_to_download = range(min(zone_1, zone_2), max(zone_1, zone_2) + 1)
     return zones_to_download
 
@@ -66,7 +69,8 @@ def get_info_from_specifier(file_name):
 
     :return: year, month, zone or day, extension
     """
-    split = re.search('[0-9]{4}.+AIS_([0-9]{4})_([0-9]{2})_(Zone)?([0-9]{2}|\*)\.(.+)', file_name)
+    split = re.search(
+        '[0-9]{4}.+AIS_([0-9]{4})_([0-9]{2})_(Zone)?([0-9]{2}|\*)\.(.+)', file_name)
     if split:
         year = split.group(1)
         month = split.group(2)
@@ -98,23 +102,26 @@ def all_specifiers(zones, years, extension, dir=None):
         if year in (2015, 2016, 2017):
             for month in range(1, 13):
                 for zone in zones:
-                    specifier = get_file_specifier(year, month, zone, extension)
+                    specifier = get_file_specifier(
+                        year, month, zone, extension)
                     specifiers.append(specifier)
 
                     if dir is not None:
                         path = os.path.join(dir, specifier)
                         paths.append(path)
         elif year in (2018, 2019, 2020, 2021):
-            for dt in rrule.rrule(rrule.DAILY,
-                                  dtstart=datetime.strptime(f'{year}-01-01', '%Y-%m-%d'),
-                                  until=datetime.strptime(f'{year}-12-31', '%Y-%m-%d')):
-                specifier = get_file_specifier(dt.year, dt.month, dt.day, extension)
-                specifiers.append(specifier)
+            for month in range(1, 13):
+                for day in range(1, 5):  # first 4 days
+                    dt = datetime(year, month, day)
 
-                if dir is not None:
-                    path = os.path.join(dir, specifier)
-                    paths.append(path)
-                break
+                    specifier = get_file_specifier(
+                        dt.year, dt.month, dt.day, extension
+                    )
+                    specifiers.append(specifier)
+
+                    if dir is not None:
+                        path = os.path.join(dir, specifier)
+                        paths.append(path)
 
     if dir is not None:
         all_zym = {'paths': paths, 'specifiers': specifiers}
@@ -192,6 +199,7 @@ def clear_path(path):
         else:
             shutil.rmtree(path)
 
+
 def get_min_max_times(specifier):
     """
     Get the first/last possible time for AIS messages contained in a file
@@ -207,7 +215,6 @@ def get_min_max_times(specifier):
         min_time = pd.to_datetime(f'{year}-{month}-01 00:00:00')
         _, last_day = monthrange(year, month)
         max_time = pd.to_datetime(f'{year}-{month}-{last_day} 23:59:59')
-
 
     elif year in (2018, 2019, 2020, 2021):
         day = zone_or_day

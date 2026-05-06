@@ -8,6 +8,7 @@ class DataGenerator(tf.keras.utils.Sequence):
     """
     Data generator for keras modeling
     """
+
     def __init__(self, X, Y, batch_size=512, shuffle=True):
         """
         If data length is not divisible by batch size, will keep out a random set of rows each round (who make up the
@@ -36,7 +37,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         else:
             self.complete_len = len(X)
         self.batch_len = int(np.floor(self.complete_len / self.batch_size))
-        self.split_indexes = np.arange(0, self.complete_len, self.batch_size)[1:]
+        self.split_indexes = np.arange(
+            0, self.complete_len, self.batch_size)[1:]
         self.on_epoch_end()
 
     def __len__(self):
@@ -61,7 +63,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         :return:
         """
         if not self.data_is_split:
-            self.X_split = [np.split(xset, self.split_indexes, axis=0) for xset in self.X_unified]
+            self.X_split = [np.split(xset, self.split_indexes, axis=0)
+                            for xset in self.X_unified]
             self.Y_split = np.split(self.Y_unified, self.split_indexes, axis=0)
             self.X_unified = None
             self.Y_unified = None
@@ -74,18 +77,19 @@ class DataGenerator(tf.keras.utils.Sequence):
         :return:
         """
         if self.data_is_split:
-            X_info = [[list(xset[0].shape), xset[0].dtype] for xset in self.X_split]
+            X_info = [[list(xset[0].shape), xset[0].dtype]
+                      for xset in self.X_split]
             for i in range(len(X_info)):
                 X_info[i][0][0] = self.complete_len
-            self.X_unified = [np.empty(shape, dtype=dtype) for shape, dtype in X_info]
+            self.X_unified = [np.empty(shape, dtype=dtype)
+                              for shape, dtype in X_info]
             for i in range(self.num_X_sets):
                 self.X_unified[i][:] = np.nan
             for xset_idx, start_index in zip(range(len(self.X_split[0])), range(0, self.complete_len, self.batch_size)):
                 for i in range(self.num_X_sets):
-                    self.X_unified[i][start_index:start_index+self.batch_size] = self.X_split[i][xset_idx]
+                    self.X_unified[i][start_index:start_index +
+                                      self.batch_size] = self.X_split[i][xset_idx]
                     self.X_split[i][xset_idx] = None
-
-
 
             self.Y_unified = np.concatenate(self.Y_split, axis=0)
             self.Y_split = None
@@ -98,7 +102,6 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.X_unified = [xset[self.indexes] for xset in self.X_unified]
         self.Y_unified = self.Y_unified[self.indexes]
 
-
         self.X_split = [
             np.split(xset, self.split_indexes, axis=0) for xset in self.X_unified
         ]
@@ -108,7 +111,6 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.Y_unified = None
         self.data_is_split = True
         gc.collect()
-
 
     def __data_generation(self, index):
         """
@@ -121,6 +123,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         if self.num_X_sets == 1:
             input = self.X_split[0][index]
         else:
-            input = {f'input_{i+1}':xset[index] for i, xset in enumerate(self.X_split)}
+            input = {'recurrent_input': self.X_split[0][index],
+                     'weather_input': self.X_split[1][index]}
 
         return input, output

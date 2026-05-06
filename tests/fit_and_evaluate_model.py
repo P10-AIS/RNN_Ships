@@ -1,3 +1,14 @@
+import utils
+from loading.data_loader import DataLoader
+import loading
+import models
+from tensorflow.keras.callbacks import EarlyStopping
+from mlflow import log_param, log_artifact, log_metric, log_dict
+import tensorflow as tf
+import mlflow
+from utils import ProcessorManager, TestArgParser
+import pandas as pd
+import numpy as np
 import sys
 import os
 import time
@@ -7,11 +18,6 @@ import json
 
 os.environ['PYTHONHASHSEED'] = '0'
 
-import numpy as np
-import pandas as pd
-
-
-from utils import ProcessorManager, TestArgParser
 
 # These need to come before tensorflow is imported so that if we're using CPU we can unregister the GPUs before tf
 # imports them.
@@ -20,20 +26,9 @@ args = parser.parse()
 manager = ProcessorManager(debug=args.debug)
 manager.open()
 
-import mlflow
 
 if args.debug:
     mlflow.set_experiment(experiment_name='Ships Debugging')
-
-
-import tensorflow as tf
-from mlflow import log_param, log_artifact, log_metric, log_dict
-from tensorflow.keras.callbacks import EarlyStopping
-
-import models
-import loading
-from loading.data_loader import DataLoader
-import utils
 
 
 def save_predictions_and_errors(predictions, errors, args, which):
@@ -56,7 +51,6 @@ def save_predictions_and_errors(predictions, errors, args, which):
                        predictions[i-1], delimiter=',')
             log_artifact(f'{which}_predictions_hour_{i}.csv')
 
-
     elif args.model_type in ['long_term', 'long_term_fusion']:
         np.savetxt(f'{which}_haversine_error_{args.hours_out}_hour.csv',
                    errors[0], delimiter=',')
@@ -65,7 +59,6 @@ def save_predictions_and_errors(predictions, errors, args, which):
         np.savetxt(f'{which}_predictions_hour_{args.hours_out}.csv',
                    predictions[0], delimiter=',')
         log_artifact(f'{which}_predictions_hour_{args.hours_out}.csv')
-
 
 
 if __name__ == '__main__':
@@ -88,10 +81,10 @@ if __name__ == '__main__':
         log_param('host', config.host)
         log_param('seed', args.seed)
         log_param('processor', manager.device())
-        log_param('lat_1',config.dataset_config.lat_1)
-        log_param('lat_2',config.dataset_config.lat_2)
-        log_param('lon_1',config.dataset_config.lon_1)
-        log_param('lon_2',config.dataset_config.lon_2)
+        log_param('lat_1', config.dataset_config.lat_1)
+        log_param('lat_2', config.dataset_config.lat_2)
+        log_param('lon_1', config.dataset_config.lon_1)
+        log_param('lon_2', config.dataset_config.lon_2)
         log_param('start_year', config.start_year)
         log_param('end_year', config.end_year)
         log_param('batch_size', args.batch_size)
@@ -102,20 +95,24 @@ if __name__ == '__main__':
         log_param('rnn_layer_size', args.rnn_layer_size)
         log_param('number_of_dense_layers', args.number_of_dense_layers)
         log_param('dense_layer_size', args.dense_layer_size)
-        log_param('weather',args.weather)
+        log_param('weather', args.weather)
         log_param('distance_traveled', args.distance_traveled)
         log_param('sog_cog', args.sog_cog)
-        log_param('dataset_name',config.dataset_config.dataset_name)
+        log_param('dataset_name', config.dataset_config.dataset_name)
         log_param('rnn_to_dense_connection', args.rnn_to_dense_connection)
-        if args.model_type in ['long_term','long_term_fusion']:
+        if args.model_type in ['long_term', 'long_term_fusion']:
             log_param('regularization', args.regularization)
-            log_param('regularization_application',args.regularization_application)
-            log_param('regularization_coefficient',args.regularization_coefficient)
+            log_param('regularization_application',
+                      args.regularization_application)
+            log_param('regularization_coefficient',
+                      args.regularization_coefficient)
             log_param('hours_out', args.hours_out)
             if args.model_type == 'long_term_fusion':
-                log_param('number_of_fusion_weather_layers', args.number_of_fusion_weather_layers)
-                log_param('fusion_layer_structure', args.fusion_layer_structure)
-                log_param('length_of_history',args.length_of_history)
+                log_param('number_of_fusion_weather_layers',
+                          args.number_of_fusion_weather_layers)
+                log_param('fusion_layer_structure',
+                          args.fusion_layer_structure)
+                log_param('length_of_history', args.length_of_history)
                 if args.fusion_layer_structure == 'convolutions':
                     log_param('output_feature_size', args.output_feature_size)
                     log_param('conv_kernel_size', args.conv_kernel_size)
@@ -123,8 +120,10 @@ if __name__ == '__main__':
                     log_param('pool_size', args.pool_size)
 
         if not args.debug:
-            stdout_path = os.path.join(mlflow.get_artifact_uri(), 'stdout.txt').replace('file://', '')
-            stderr_path = os.path.join(mlflow.get_artifact_uri(), 'stderr.txt').replace('file://', '')
+            stdout_path = os.path.join(
+                mlflow.get_artifact_uri(), 'stdout.txt').replace('file://', '')
+            stderr_path = os.path.join(
+                mlflow.get_artifact_uri(), 'stderr.txt').replace('file://', '')
             sys.stdout = open(stdout_path, 'w', 1)
             sys.stderr = open(stderr_path, 'w', 1)
 
@@ -133,7 +132,6 @@ if __name__ == '__main__':
                 sys.stderr.close()
 
             atexit.register(exit_handler)
-
 
     # Use the device that this run has been assigned by the manager
     with tf.device(manager.device()):
@@ -152,7 +150,7 @@ if __name__ == '__main__':
                 normalization_factors=loader.run_config['normalization_factors'],
                 y_idxs=loader.run_config['y_idxs'],
                 columns=loader.run_config['columns'],
-                learning_rate = args.learning_rate,
+                learning_rate=args.learning_rate,
                 loss=args.loss,
                 rnn_to_dense_connection=args.rnn_to_dense_connection
             )
@@ -169,8 +167,8 @@ if __name__ == '__main__':
                 normalization_factors=loader.run_config['normalization_factors'],
                 y_idxs=loader.run_config['y_idxs'],
                 columns=loader.run_config['columns'],
-                learning_rate = args.learning_rate,
-                loss = args.loss
+                learning_rate=args.learning_rate,
+                loss=args.loss
             )
         elif args.model_type == 'long_term':
             runner = models.RNNLongTermModelRunner(
@@ -186,7 +184,7 @@ if __name__ == '__main__':
                 normalization_factors=loader.run_config['normalization_factors'],
                 y_idxs=loader.run_config['y_idxs'],
                 columns=loader.run_config['columns'],
-                learning_rate = args.learning_rate,
+                learning_rate=args.learning_rate,
                 rnn_to_dense_connection=args.rnn_to_dense_connection,
                 loss=args.loss,
                 regularization=args.regularization,
@@ -203,27 +201,26 @@ if __name__ == '__main__':
                 dense_layer_size=args.dense_layer_size,
                 direction=args.direction,
                 input_ts_length=loader.run_config['input_ts_length'],
-                input_num_recurrent_features=int(len(loader.run_config['recurrent_idxs'])),
+                input_num_recurrent_features=int(
+                    len(loader.run_config['recurrent_idxs'])),
                 weather_shape=train_X[1].shape,
                 output_num_features=len(loader.run_config['y_idxs']),
                 normalization_factors=loader.run_config['normalization_factors'],
                 y_idxs=loader.run_config['y_idxs'],
                 columns=loader.run_config['columns'],
-                learning_rate = args.learning_rate,
+                learning_rate=args.learning_rate,
                 rnn_to_dense_connection=args.rnn_to_dense_connection,
                 loss=args.loss,
                 regularization=args.regularization,
                 regularization_coefficient=args.regularization_coefficient,
                 regularization_application=args.regularization_application,
                 recurrent_idxs=loader.run_config['recurrent_idxs'],
-                fusion_layer_structure = args.fusion_layer_structure,
+                fusion_layer_structure=args.fusion_layer_structure,
                 output_feature_size=args.output_feature_size,
                 conv_kernel_size=args.conv_kernel_size,
                 conv_stride_size=args.conv_stride_size,
                 pool_size=args.pool_size
             )
-
-
 
         # Log the model's architecture
         runner.compile()
@@ -233,7 +230,8 @@ if __name__ == '__main__':
             mlflow.tensorflow.autolog(log_models=True)
 
         patience = 3 if args.debug else 30
-        early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
+        early_stopping = EarlyStopping(
+            monitor='val_loss', patience=patience, restore_best_weights=True)
         callbacks = [early_stopping]
 
         # Fit model
@@ -241,17 +239,19 @@ if __name__ == '__main__':
         if config.logging:
             log_param('time_to_load', (load_ts - start_ts) / (60 ** 2))
 
+        train_data = loading.DataGenerator(
+            train_X, train_Y_labels, args.batch_size, shuffle=True)
 
-        train_data = loading.DataGenerator(train_X, train_Y_labels, args.batch_size, shuffle=True)
-
-        valid_data = loading.DataGenerator(valid_X, valid_Y_labels, args.batch_size, shuffle=True)
-        kwargs = {'max_queue_size':len(train_data)//2}
+        valid_data = loading.DataGenerator(
+            valid_X, valid_Y_labels, args.batch_size, shuffle=True)
+        kwargs = {}
 
         if args.model_type == 'attention_seq2seq':
             # valid_data = (valid_X, valid_Y_labels)
 
             td = train_data
             vd = valid_data
+
             def wrapped_train_generator():
                 for idx in range(len(td)):
                     if idx == len(td) - 1:
@@ -267,14 +267,14 @@ if __name__ == '__main__':
             train_data = tf.data.Dataset.from_generator(
                 wrapped_train_generator, (tf.float32, tf.float32),
                 output_shapes=(tf.TensorShape(x_shape), tf.TensorShape(y_shape))).repeat().prefetch(steps_per_epoch//4)
-            kwargs = {'steps_per_epoch':steps_per_epoch}
+            kwargs = {'steps_per_epoch': steps_per_epoch}
 
         del train_X, train_Y_labels
         del valid_X, valid_Y_labels
 
         model_history = runner.fit(train_data,
                                    epochs=1000,
-                                   batch_size=args.batch_size, # This is a bit precarious, as tensorflow says not to
+                                   batch_size=args.batch_size,  # This is a bit precarious, as tensorflow says not to
                                    # include a batch size kwarg if your data is a tf.keras.utils.Sequence. I've
                                    # decided to do so anyway, because A) not doing so causes an error with MLFLOW's
                                    # autologging (it tries to log the batch size as 'None', and experiences a silent error
@@ -293,18 +293,19 @@ if __name__ == '__main__':
         valid_X_long_term = loader.load_set('valid', 'test', 'x')
         valid_Y_long_term = loader.load_set('valid', 'test', 'y')
 
-        valid_predictions, valid_errors, hour_haversine_distances_validation = runner.predict(valid_X_long_term, valid_Y_long_term, args)
+        valid_predictions, valid_errors, hour_haversine_distances_validation = runner.predict(
+            valid_X_long_term, valid_Y_long_term, args)
         predict_ts = time.time()
-        save_predictions_and_errors(valid_predictions, valid_errors, args, 'validation')
-
+        save_predictions_and_errors(
+            valid_predictions, valid_errors, args, 'validation')
 
         test_X_long_term = loader.load_set('test', 'test', 'x')
         test_Y_long_term = loader.load_set('test', 'test', 'y')
 
-        test_predictions, test_errors, hour_haversine_distances_test = runner.predict(test_X_long_term, test_Y_long_term, args)
-        save_predictions_and_errors(test_predictions, test_errors, args, 'test')
-
-
+        test_predictions, test_errors, hour_haversine_distances_test = runner.predict(
+            test_X_long_term, test_Y_long_term, args)
+        save_predictions_and_errors(
+            test_predictions, test_errors, args, 'test')
 
         #################################
         manager.close()
@@ -312,21 +313,28 @@ if __name__ == '__main__':
     if config.logging:
         log_param('time_to_predict', (predict_ts - train_ts) / (60 ** 2))
         log_param('time_in_total', (predict_ts - start_ts) / (60 ** 2))
-        if args.model_type in ['iterative','attention_seq2seq']:
+        if args.model_type in ['iterative', 'attention_seq2seq']:
             for i in range(3):
-                log_metric(f'haversine_validation_loss_{i+1}_hr', float(hour_haversine_distances_validation[i]))
-                log_metric(f'haversine_validation_loss_{i+1}_hr_REMEASURED', float(hour_haversine_distances_validation[i]))
-                log_metric(f'haversine_test_loss_{i+1}_hr', float(hour_haversine_distances_test[i]))
-                log_metric(f'haversine_test_loss_{i+1}_hr_REMEASURED', float(hour_haversine_distances_test[i]))
+                log_metric(
+                    f'haversine_validation_loss_{i+1}_hr', float(hour_haversine_distances_validation[i]))
+                log_metric(f'haversine_validation_loss_{i+1}_hr_REMEASURED', float(
+                    hour_haversine_distances_validation[i]))
+                log_metric(
+                    f'haversine_test_loss_{i+1}_hr', float(hour_haversine_distances_test[i]))
+                log_metric(
+                    f'haversine_test_loss_{i+1}_hr_REMEASURED', float(hour_haversine_distances_test[i]))
         elif args.model_type in ['long_term', 'long_term_fusion']:
-            log_metric(f'haversine_validation_loss_{args.hours_out}_hr', float(hour_haversine_distances_validation[0]))
-            log_metric(f'haversine_validation_loss_{args.hours_out}_hr_REMEASURED', float(hour_haversine_distances_validation[0]))
-            log_metric(f'haversine_test_loss_{args.hours_out}_hr', float(hour_haversine_distances_test[0]))
-            log_metric(f'haversine_test_loss_{args.hours_out}_hr_REMEASURED', float(hour_haversine_distances_test[0]))
+            log_metric(f'haversine_validation_loss_{args.hours_out}_hr', float(
+                hour_haversine_distances_validation[0]))
+            log_metric(f'haversine_validation_loss_{args.hours_out}_hr_REMEASURED', float(
+                hour_haversine_distances_validation[0]))
+            log_metric(f'haversine_test_loss_{args.hours_out}_hr', float(
+                hour_haversine_distances_test[0]))
+            log_metric(f'haversine_test_loss_{args.hours_out}_hr_REMEASURED', float(
+                hour_haversine_distances_test[0]))
 
         if args.model_type == 'attention_seq2seq':
             runner.save('model.h5')
             log_artifact('model.h5')
-        elif args.model_type in ['iterative','long_term','long_term_fusion']:
+        elif args.model_type in ['iterative', 'long_term', 'long_term_fusion']:
             pass
-

@@ -6,6 +6,7 @@ import atexit
 from loading import loading
 from utils.utils import total_system_ram
 
+
 class DiskArray():
     """
     Light weight class for processing large data sets in chunks
@@ -18,6 +19,7 @@ class DiskArray():
     Keeps track of the complete size of all chunks, and if the chunks are small enough to fit in memory all together,
     can convert itself to a numpy array or list of numpy arrays
     """
+
     def __init__(self):
         self.temp_paths = []
         self.shape = None
@@ -68,7 +70,6 @@ class DiskArray():
         del array
         gc.collect()
 
-
     def _save_partition_to_path(self, path, data):
         """
         Save one of the DiskArray's chunks to a specific path
@@ -95,14 +96,14 @@ class DiskArray():
         :return:
         """
         files = os.listdir(path)
-        files = np.array(files)[np.argsort([int(n.split('.')[0]) for n in files])].tolist()
+        files = np.array(files)[np.argsort(
+            [int(n.split('.')[0]) for n in files])].tolist()
         data = []
         for f in files:
             data += [np.load(os.path.join(path, f))]
         if len(data) == 1:
             data = data[0]
         return data
-
 
     def __getitem__(self, item):
         """
@@ -123,11 +124,13 @@ class DiskArray():
         """
         if self.nbytes > (total_system_ram() * 0.95):
             raise MemoryError('Not enough memory to load the dataset')
-        data = [self._load_partition_from_path(t.name) for t in self.temp_paths]
+        data = [self._load_partition_from_path(
+            t.name) for t in self.temp_paths]
         joined_data = []
         if type(data[0]) == list:
             for i in range(len(data[0])):
-                joined_data += [np.concatenate([d[i] for d in data], axis=self.axis)]
+                joined_data += [np.concatenate([d[i]
+                                               for d in data], axis=self.axis)]
         else:
             joined_data = np.concatenate(data, axis=self.axis)
 
@@ -153,7 +156,8 @@ class DiskArray():
                 if head_data is None:
                     head_data = data
                 else:
-                    head_data = [np.concatenate([hd, d], axis=self.axis) for hd, d in zip(head_data, data)]
+                    head_data = [np.concatenate(
+                        [hd, d], axis=self.axis) for hd, d in zip(head_data, data)]
             else:
                 t_len = len(data)
                 to_sample = min(t_len, n - sampled)
@@ -161,17 +165,18 @@ class DiskArray():
                 if head_data is None:
                     head_data = data
                 else:
-                    head_data = np.concatenate([head_data, data], axis=self.axis)
+                    head_data = np.concatenate(
+                        [head_data, data], axis=self.axis)
             sampled += to_sample
             if sampled == n:
                 break
             assert sampled < n
 
         if sampled < n:
-            raise UserWarning('Dataset does not contain the desired number of records. Entire dataset returned')
+            raise UserWarning(
+                'Dataset does not contain the desired number of records. Entire dataset returned')
 
         return head_data
-
 
     def save_to_disk(self, dir):
         """
@@ -201,7 +206,7 @@ class DiskArray():
                 data = self._load_partition_from_path(t.name)
                 t_dir = os.path.join(dir, str(i))
                 self._save_partition_to_path(t_dir, data)
-                    
+
     def load_from_disk(self, dir):
         """
         Load a disk array from a save path
@@ -214,7 +219,6 @@ class DiskArray():
             path = os.path.join(dir, p)
             data = self._load_partition_from_path(path)
             self.add_array(data)
-
 
     def __del__(self):
         """
@@ -302,7 +306,8 @@ class DiskArray():
         self.shape = None
         for t in self.temp_paths:
             array = self._load_partition_from_path(t.name)
-            array = loading.apply_transformations(array, x_or_y, transformations, normalizer, normalization_factors)
+            array = loading.apply_transformations(
+                array, x_or_y, transformations, normalizer, normalization_factors)
             self._update_basic_info(array)
             self._save_partition_to_path(t.name, array)
 

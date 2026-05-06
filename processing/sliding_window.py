@@ -12,19 +12,22 @@ from config.dataset_config import datasets
 from processing_step import ProcessingStep
 from utils import clear_path
 
+
 class SlidingWindow(ProcessingStep):
     """
     Class for performing the sliding window processing step, where long tracks are split up into multiple
     shorter tracks that can be used for fitting the model.
     """
+
     def __init__(self):
         super().__init__()
         self._define_directories(
-            from_name='interpolated_with_currents_stride_3' + ('_debug' if args.debug else ''),
-            to_name='windowed_with_currents_stride_3' + ('_debug' if args.debug else '')
+            from_name='interpolated_with_currents_stride_3' +
+            ('_debug' if args.debug else ''),
+            to_name='windowed_with_currents_stride_3' +
+            ('_debug' if args.debug else '')
         )
         self._initialize_logging(args.save_log, 'sliding_window_with_weather')
-
 
     def load(self):
         """
@@ -36,14 +39,16 @@ class SlidingWindow(ProcessingStep):
         :return:
         """
         for dataset_name in ['test', 'valid', 'train']:
-            dataset_path = os.path.join(self.from_dir, f'{dataset_name}.parquet')
+            dataset_path = os.path.join(
+                self.from_dir, f'{dataset_name}.parquet')
             self.datasets[dataset_name] = dd.read_parquet(dataset_path)
 
             if self.datasets[dataset_name].index.name is None:
                 def rename_index(partition):
                     partition.index.name = 'track'
                     return partition
-                self.datasets[dataset_name] = self.datasets[dataset_name].map_partitions(rename_index)
+                self.datasets[dataset_name] = self.datasets[dataset_name].map_partitions(
+                    rename_index)
         logging.info('File paths have been specified for dask')
 
     def save(self):
@@ -61,7 +66,8 @@ class SlidingWindow(ProcessingStep):
             clear_path(out_path)
             logging.info(
                 f'Number of messages in {dataset_name} set is {len(self.datasets[dataset_name]):,}')
-            dd.to_parquet(self.datasets[dataset_name], out_path, schema='infer')
+            dd.to_parquet(self.datasets[dataset_name],
+                          out_path, schema='infer')
             logging.info(f'{dataset_name} set saved to {out_path}')
 
     def calculate(self):
@@ -127,7 +133,8 @@ class SlidingWindow(ProcessingStep):
         :param track: Track to window
         :return: Windowed track
         """
-        number_of_subtracks = len(track) - (config.length_of_history + config.length_into_the_future)
+        number_of_subtracks = len(
+            track) - (config.length_of_history + config.length_into_the_future)
         subtrack_idxs = [np.arange(i, i + config.length_of_history + config.length_into_the_future + 1) for i in
                          range(0, number_of_subtracks, config.length_of_history)]
         windowed_track = [track.iloc[idxs] for idxs in subtrack_idxs]
@@ -146,14 +153,15 @@ class SlidingWindow(ProcessingStep):
         :return: Windowed track
         """
         number_of_gaps_into_the_future = config.length_into_the_future
-        number_of_subtracks = len(track) - (config.length_of_history + number_of_gaps_into_the_future)
-        window_movement_in_ts = int(config.dataset_config.sliding_window_movement / config.interpolation_time_gap)
+        number_of_subtracks = len(
+            track) - (config.length_of_history + number_of_gaps_into_the_future)
+        window_movement_in_ts = int(
+            config.dataset_config.sliding_window_movement / config.interpolation_time_gap)
         subtrack_idxs = [np.arange(i, i + config.length_of_history + number_of_gaps_into_the_future + 1) for i in
                          range(0, number_of_subtracks, window_movement_in_ts)]
         windowed_track = [track.iloc[idxs] for idxs in subtrack_idxs]
         windowed_track = pd.concat(windowed_track).reset_index(drop=True)
         return windowed_track
-
 
 
 if __name__ == '__main__':

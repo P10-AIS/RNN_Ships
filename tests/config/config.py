@@ -7,7 +7,7 @@ global dataset_config
 # url and will also need to be preprocessed slightly differently - check the ais_data_faq_from_marine_cadastre.pdf in
 # resources_and_information for details.
 global start_year
-start_year = 2015
+start_year = 2019
 
 global end_year
 end_year = 2019
@@ -49,4 +49,4 @@ host = gethostname()
 # Categorical columns that are one hot encoded. Only change this if you change preprocessing to add in other
 # columns.
 global categorical_columns
-categorical_columns = ['vessel_group','destination_cluster']
+categorical_columns = ['vessel_group', 'destination_cluster']

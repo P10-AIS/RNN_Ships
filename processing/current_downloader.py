@@ -1,3 +1,4 @@
+import xarray as xr
 import argparse
 import logging
 import os
@@ -15,6 +16,7 @@ class Downloader(ProcessingStep):
     """
     Class for downloading ocean current data from NOAA
     """
+
     def __init__(self):
         super().__init__()
         self._define_directories(
@@ -22,7 +24,6 @@ class Downloader(ProcessingStep):
             to_name='ocean_current_downloads'
         )
         self._initialize_logging(args.save_log, 'ocean_current_download')
-
 
     def _get_hycom_region(self):
         """
@@ -37,19 +38,17 @@ class Downloader(ProcessingStep):
             # RegionNum: [[Lat_min, lat_max], [lon_min, lon_max]]
             1: [(0.0, 70.0), (-99.99996948242188, -50.0)],
             6: [(10.0, 70.0), (-150.00001525878906, -210.0)],
-            7: [(10.0, 60.0), (-149.99996948242188,-100.0)],
+            7: [(10.0, 60.0), (-149.99996948242188, -100.0)],
             17: [(60.0, 80.0), (-179.99996948242188, -120.0)]
         }
 
-        for region_num, [(lat_min, lat_max), (lon_min, lon_max)]  in ranges.items():
+        for region_num, [(lat_min, lat_max), (lon_min, lon_max)] in ranges.items():
             if config.dataset_config.lat_1 >= lat_min and config.dataset_config.lat_2 <= lat_max:
                 if config.dataset_config.lon_1 >= lon_min and config.dataset_config.lon_2 <= lon_max:
                     return region_num
         raise ValueError("Regional weather data not available for the lat/lon coordinates chosen. They may be "
                          "available in HYCOM's global surface currents dataset, which uses a slightly different"
                          "url format. See the link in the docstring to amend the code for that dataset. ")
-
-
 
     def _define_directories(self, from_name, to_name):
         """
@@ -70,15 +69,19 @@ class Downloader(ProcessingStep):
         )
         self.from_dir = from_name
         self.to_dir = os.path.join(self.box_and_year_dir, to_name)
-        self.artifact_directory = os.path.join(self.box_and_year_dir, 'artifacts')
+        self.artifact_directory = os.path.join(
+            self.box_and_year_dir, 'artifacts')
 
         self._create_directories()
 
     def _get_map_idxs(self, dataset, variable, map):
         if map == 'time':
-            time_offset = pd.to_datetime(dataset['time'].attributes['units'].replace('hours since ', ''))
-            min = pd.to_datetime(f'{config.start_year}-01-01').tz_localize(time_offset.tzname())
-            max = pd.to_datetime(f'{config.end_year + 1}-01-01').tz_localize(time_offset.tzname())
+            time_offset = pd.to_datetime(
+                dataset['time'].units.replace('hours since ', ''))
+            min = pd.to_datetime(
+                f'{config.start_year}-01-01').tz_localize(time_offset.tzname())
+            max = pd.to_datetime(
+                f'{config.end_year + 1}-01-01').tz_localize(time_offset.tzname())
         else:
             max = getattr(config.dataset_config, f'{map}_2')
             min = getattr(config.dataset_config, f'{map}_1')
@@ -92,22 +95,25 @@ class Downloader(ProcessingStep):
                 max %= 360
                 min %= 360
             else:
-                raise ValueError(f'Unknown module: {dataset[variable][map].modulo} for dataset with id {dataset.id}')
+                raise ValueError(
+                    f'Unknown module: {dataset[variable][map].modulo} for dataset with id {dataset.id}')
 
         map_vals = np.array(dataset[map][:])
         if map == 'time':
-            map_vals = pd.to_datetime([time_offset + pd.Timedelta(hours=h) for h in map_vals])
+            map_vals = pd.to_datetime(
+                [time_offset + pd.Timedelta(hours=h) for h in map_vals])
 
         idxs = np.where((map_vals <= max) & (map_vals >= min))[0]
 
-
         if len(idxs) == 0:
-            raise ValueError('No surface current observations are in target range')
+            raise ValueError(
+                'No surface current observations are in target range')
 
         if len(idxs) > 1:
             continuous = len(np.unique(idxs[1:] - idxs[:-1])) == 1
             if not continuous:
-                raise ValueError(f'Slice for map {map} with dataset {dataset.id} is not continuous')
+                raise ValueError(
+                    f'Slice for map {map} with dataset {dataset.id} is not continuous')
 
         min_idx = idxs.min()
         max_idx = idxs.max()
@@ -115,84 +121,90 @@ class Downloader(ProcessingStep):
         map_vals = map_vals[(map_vals <= max) & (map_vals >= min)]
         return min_idx, max_idx, map_vals
 
+    import os
 
     def download(self):
-        """
-        Download relevant dataset from NOAA
-
-        This accesses the aggregated NetCDF using OPENDAP. It only downloads the ocean current U/V values for the water
-        surface (i.e. it doesn't download the currents below the surface). It downloads time chunks so as to not
-        overload the THREDDS server, e.g. requesting the first two months, then the next two, and so on.
-
-        :return:
-        """
         logging.info('Starting downloads')
 
-        # Get the url to query
-        region = self._get_hycom_region()
-        aggregated_url = ('https://www.ncei.noaa.gov/'
-                          f'thredds-coastal/dodsC/hycom/hycom_reg{region}_agg/'
-                          f'HYCOM_Region_{region}_Aggregation_best.ncd')
+        url = "https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/uv3z/2019"
 
-        # Open connection to url
-        sample_ds = open_url(aggregated_url)
+        # Open lazily (important: no download yet)
+        ds = xr.open_dataset(url, decode_times=False)
 
-        # Find the correct indexes that we want to filter down to
-        time_min, time_max, time_vals = self._get_map_idxs(sample_ds, 'water_u', 'time')
-        depth_min, depth_max, depth_vals = self._get_map_idxs(sample_ds, 'water_u', 'depth')
-        lat_min, lat_max, lat_vals = self._get_map_idxs(sample_ds, 'water_u', 'lat')
-        lon_min, lon_max, lon_vals = self._get_map_idxs(sample_ds, 'water_u', 'lon')
+        # --- Get index ranges (adapt this to your bounding box logic) ---
+        lat = ds['lat'].values
+        lon = ds['lon'].values
+        time = ds['time'].values
 
-        # Only download this many time points at once. This number can be changed if there are timeout issues.
-        time_points_to_download_at_once = 1000
-        time_slices = np.arange(time_min, time_max, time_points_to_download_at_once)
+        time_offset = pd.to_datetime(
+            ds['time'].units.replace('hours since ', ''))
 
-        for var in config.currents_variables:
-            for j, min_time in enumerate(time_slices):
-                max_time = min(time_max, min_time + time_points_to_download_at_once - 1)
+        # Use your existing function
+        time_min, time_max, time_vals = self._get_map_idxs(
+            ds, 'water_u', 'time')
+        depth_min, depth_max, depth_vals = self._get_map_idxs(
+            ds, 'water_u', 'depth')
+        lat_min, lat_max, lat_vals = self._get_map_idxs(ds, 'water_u', 'lat')
+        lon_min, lon_max, lon_vals = self._get_map_idxs(ds, 'water_u', 'lon')
 
-                # Add a filter to the url so we just download for the desired coordinates/time period/depth
-                filtered_url = aggregated_url + (
-                    f'.dods?{var}.{var}'
-                    f'[{min_time}:1:{max_time}]'
-                    f'[{depth_min}:1:{depth_max}]' 
-                    f'[{lat_min}:1:{lat_max}]'
-                    f'[{lon_min}:1:{lon_max}]'
+        # Only surface
+        depth_idx = 0
+
+        # Chunking (same idea as before)
+        chunk_size = 100  # safer than 1000 for HYCOM
+        time_slices = np.arange(time_min, time_max + 1, chunk_size)
+
+        for var in ["water_v", "water_u"]:
+            for j, t0 in enumerate(time_slices):
+                if j == 3:
+                    break
+                t1 = min(time_max, t0 + chunk_size - 1)
+
+                logging.info(f"Downloading {var} [{t0}:{t1}]")
+
+                # --- Subset (this triggers OPeNDAP request only when loaded) ---
+                subset = ds[var].isel(
+                    time=slice(t0, t1 + 1),
+                    depth=depth_idx,
+                    lat=slice(lat_min, lat_max + 1),
+                    lon=slice(lon_min, lon_max + 1)
                 )
-                # Open connection to filtered url
-                data = open_url(filtered_url)
 
-                # Download data
-                data = (np.array(data.data))[0,0,:,0]
-                # I was getting an error about little endian/big endian mismatch that the byteswapping fixes
-                data = [pd.DataFrame(data[i].byteswap().newbyteorder(), index=lat_vals, columns=lon_vals) for i in range(len(data))]
+                # Load into memory (actual download)
+                data = subset.load()
 
-                times = time_vals[min_time - time_min: max_time-time_min + 1]
-                # Reshape downloaded data
-                for i in range(len(data)):
-                    data[i]['time'] = times[i]
-                    data[i].index.name = 'latitude'
-                    data[i] = data[i].reset_index()
-                    data[i] = pd.melt(
-                        data[i],
-                        id_vars=['latitude','time'],
-                        value_vars=lon_vals
-                    )
-                    data[i] = data[i].rename(columns={'variable':'longitude','value':'speed'})
-                    if (data[i]['longitude'] > 180).all():
-                        data[i]['longitude'] -= 360
-                data = pd.concat(data)
-                for col in ['year','month','day','hour']:
-                    data[col] = getattr(data['time'].dt, col)
-                del data['time']
+                # Convert to dataframe
+                df = data.to_dataframe().reset_index()
 
-                # Save this downloaded dataset to csv
-                data.to_csv(os.path.join(self.to_dir, f'{var}_{j}.csv'),index=False)
-                logging.info(f'{var} data downloaded for times from {times[0].strftime("%Y-%m-%d %H:%M")} to '
-                             f'{times[-1].strftime("%Y-%m-%d %H:%M")}')
+                # Rename to match your previous format
+                df = df.rename(columns={
+                    "lat": "latitude",
+                    "lon": "longitude",
+                    var: "speed"
+                })
 
-        logging.info(f'All downloads complete for coordinates {config.dataset_config.corner_1},'
-                     f' {config.dataset_config.corner_2}')
+                # Fix longitude if needed
+                if (df['longitude'] > 180).all():
+                    df['longitude'] -= 360
+
+                df['time'] = pd.to_datetime(
+                    [time_offset + pd.Timedelta(hours=h) for h in df["time"]])
+
+                # Add time breakdown columns
+                df['year'] = df['time'].dt.year
+                df['month'] = df['time'].dt.month
+                df['day'] = df['time'].dt.day
+                df['hour'] = df['time'].dt.hour
+
+                df = df.drop(columns=['time'])
+
+                # Save
+                out_path = os.path.join(self.to_dir, f"{var}_{j}.csv")
+                df.to_csv(out_path, index=False)
+
+                logging.info(f"Saved {out_path}")
+
+        logging.info("All downloads complete")
 
 
 if __name__ == '__main__':

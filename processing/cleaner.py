@@ -20,18 +20,21 @@ class Cleaner(ProcessingStep):
     """
     Class for performing cleaning steps of preprocessing
     """
+
     def __init__(self, test_fraction, validation_fraction):
         super().__init__()
         self._define_directories(
             from_name='filtered',
             to_name='cleaned' + ('_debug' if args.debug else '')
         )
-        self.from_dir = os.path.join(self.box_and_year_dir, 'downloads','filtered')
+        self.from_dir = os.path.join(
+            self.box_and_year_dir, 'downloads', 'filtered')
         self._initialize_logging(args.save_log, 'clean')
 
         if not args.seed:
             args.seed = np.random.randint(100000000)
-            logging.warning(f'No speed specified. Using randomly generated seed {args.seed}')
+            logging.warning(
+                f'No speed specified. Using randomly generated seed {args.seed}')
         else:
             logging.info(f'Using random seed {args.seed} specified by user')
         np.random.seed(args.seed)
@@ -50,7 +53,6 @@ class Cleaner(ProcessingStep):
         ]
 
         logging.info(f'Not using columns {self.unneeded_columns}')
-
 
     def load(self):
         """
@@ -88,13 +90,14 @@ class Cleaner(ProcessingStep):
 
         :return: Files to use for testing, files to use for training
         """
-        files_to_read = all_specifiers(self.zones, config.years, 'parquet', self.from_dir)['paths']
+        files_to_read = all_specifiers(
+            self.zones, config.years, 'parquet', self.from_dir)['paths']
 
         # Determine which months to use for test and which for train
         all_months = []
         for y in config.years:
-            for m in range(1,13):
-                all_months.append((y,m))
+            for m in range(1, 13):
+                all_months.append((y, m))
         number_of_test_months = len(all_months) * self.test_fraction
         if number_of_test_months % 1 != 0:
             number_of_test_months = int(number_of_test_months)
@@ -117,7 +120,7 @@ class Cleaner(ProcessingStep):
         train_datasets = [fn for fn in files_to_read if
                           (int(get_info_from_specifier(fn)[0]), int(get_info_from_specifier(fn)[1])) in train_months]
         test_datasets = [fn for fn in files_to_read if
-                          (int(get_info_from_specifier(fn)[0]), int(get_info_from_specifier(fn)[1])) in test_months]
+                         (int(get_info_from_specifier(fn)[0]), int(get_info_from_specifier(fn)[1])) in test_months]
 
         return test_datasets, train_datasets
 
@@ -133,7 +136,8 @@ class Cleaner(ProcessingStep):
         if 'transceiver_class' in partition.columns:
             unneeded_columns = self.unneeded_columns
         else:
-            unneeded_columns = [c for c in self.unneeded_columns if c != 'transceiver_class']
+            unneeded_columns = [
+                c for c in self.unneeded_columns if c != 'transceiver_class']
 
         partition = partition.drop(columns=unneeded_columns)
         return partition
@@ -168,12 +172,13 @@ class Cleaner(ProcessingStep):
             if os.path.exists(tmp_dir):
                 # Since the Zone unification has already been done, amend the file names to reflect this
                 # Replace 'Zone10' or 'Zone11' with 'Zone*'
-                files = [re.sub(r'Zone[0-9]{1,2}','Zone*', f) for f in files]
+                files = [re.sub(r'Zone[0-9]{1,2}', 'Zone*', f) for f in files]
                 # Take the unique file names
                 files = np.unique(files).tolist()
                 # Replace 'Zone*' with 'AllZones'
-                files = [re.sub('Zone\*','AllZones', f) for f in files]
-                tmp_files = [os.path.join(tmp_dir, os.path.basename(p)) for p in files]
+                files = [re.sub('Zone\*', 'AllZones', f) for f in files]
+                tmp_files = [os.path.join(
+                    tmp_dir, os.path.basename(p)) for p in files]
             else:
                 # Keep track of the new file names
                 tmp_files = []
@@ -190,7 +195,7 @@ class Cleaner(ProcessingStep):
                 total_short_tracks = 0
 
                 # Condense zones so that they are read in as one (dask can handle a wildcard character)
-                files = [re.sub(r'Zone[0-9]{1,2}','Zone*', f) for f in files]
+                files = [re.sub(r'Zone[0-9]{1,2}', 'Zone*', f) for f in files]
                 files = np.unique(files).tolist()
 
                 # Iterate through the files, filtering each one
@@ -213,11 +218,13 @@ class Cleaner(ProcessingStep):
                     data = self._correct_negatives(data)
 
                     # Remove any messages from vessel types that we aren't using
-                    data, unwanted_vts = self._remove_unwanted_vessel_types(data)
+                    data, unwanted_vts = self._remove_unwanted_vessel_types(
+                        data)
                     total_unwanted_vts += unwanted_vts
 
                     # Remove any messages that don't have status codes we are interested in
-                    data, unwanted_statuses = self._remove_unwanted_statuses(data)
+                    data, unwanted_statuses = self._remove_unwanted_statuses(
+                        data)
                     total_unwanted_statuses += unwanted_statuses
 
                     # Drop columns we aren't using
@@ -225,37 +232,43 @@ class Cleaner(ProcessingStep):
                     data = data.reset_index()
 
                     # Sort by MMSI and datetime
-                    data['base_datetime'] = pd.to_datetime(data['base_datetime'])
-                    data = data.sort_values(['mmsi','base_datetime']).reset_index(drop=True)
+                    data['base_datetime'] = pd.to_datetime(
+                        data['base_datetime'])
+                    data = data.sort_values(
+                        ['mmsi', 'base_datetime']).reset_index(drop=True)
 
                     # Remove messages that have invalid values, or where the vessel is stationary or moving too fast
-                    data, stationary, sog_cog_heading, empirical_speed = self._remove_invalid_messages(data, trajectories_are_complete=False)
+                    data, stationary, sog_cog_heading, empirical_speed = self._remove_invalid_messages(
+                        data, trajectories_are_complete=False)
                     total_stationary += stationary
                     total_sog_cog_heading += sog_cog_heading
                     total_empirical_speed += empirical_speed
 
                     # Remove tracks that cannot possibly be long enough to match requirements specified in the config
                     data = self._create_track_ids(data)
-                    specifier = os.path.join(os.path.basename(os.path.dirname(file)), os.path.basename(file))
+                    specifier = os.path.join(os.path.basename(
+                        os.path.dirname(file)), os.path.basename(file))
                     min_time, max_time = get_min_max_times(specifier)
                     data, short_tracks = self._remove_unwanted_tracks(data, trajectories_are_complete=False,
-                                                        min_time = min_time, max_time = max_time)
+                                                                      min_time=min_time, max_time=max_time)
                     total_short_tracks += short_tracks
 
                     # Drop temporary columns
-                    data = data.drop(columns=['new_ship', 'new_track', 'track'])
+                    data = data.drop(
+                        columns=['new_ship', 'new_track', 'track'])
 
                     # Save to temporary path
                     fname = os.path.basename(file)
                     fname = re.sub('Zone\*', 'AllZones', fname)
                     tmp_path = os.path.join(tmp_dir, fname)
-                    data.to_parquet(tmp_path, engine='pyarrow',index=False)
+                    data.to_parquet(tmp_path, engine='pyarrow', index=False)
                     tmp_files += [tmp_path]
 
                 del data
                 # Log how messages were removed in total for various reasons
                 correct_mmsi_len = original_len - total_invalid_mmsis
-                logging.info(f'Dataset started with {original_len:,} messages.')
+                logging.info(
+                    f'Dataset started with {original_len:,} messages.')
                 logging.info(f'{total_invalid_mmsis:,} messages were dropped because they did not have valid MMSIs '
                              f'({total_invalid_mmsis / original_len * 100:0.3}%). Dataset now contains {correct_mmsi_len:,} '
                              f'messages.')
@@ -278,12 +291,12 @@ class Cleaner(ProcessingStep):
                              f'contains {good_sog_cog_heading:,} messages.')
                 good_empircal_speed = good_sog_cog_heading - total_empirical_speed
                 logging.info(f'{total_empirical_speed:,} messages removed ({total_empirical_speed / good_sog_cog_heading * 100:0.3}%) '
-                    f'that did not have valid empirical speeds. Another pass at removing invalid empirical speeds '
+                             f'that did not have valid empirical speeds. Another pass at removing invalid empirical speeds '
                              f'will be made later, once all datasets are joined and can be processed in unison. '
                              f'Dataset now contains {good_empircal_speed:,} messages.')
                 good_or_unknown_track_length = good_empircal_speed - total_short_tracks
                 logging.info(f'{total_short_tracks:,} messages removed ({total_short_tracks / good_empircal_speed * 100:0.3}%) '
-                    f'because they were apart of trajectories that were known to be shorter than '
+                             f'because they were apart of trajectories that were known to be shorter than '
                              f'{config.min_track_length / 60 /60} hours. Another pass at removing short trajectories '
                              f'will be made later, once all datasets are joined and can be processed in unison. '
                              f'Dataset now contains {good_or_unknown_track_length:,} messages.')
@@ -298,14 +311,14 @@ class Cleaner(ProcessingStep):
                 npartitions = os.cpu_count()*6
 
             # Sort by MMSI
-            dataset = dataset.set_index('mmsi',npartitions=npartitions)
+            dataset = dataset.set_index('mmsi', npartitions=npartitions)
             # If the above uses up too much memory and gets killed, you can try using the below line instead.
             # It may be a good deal slower, but hopefully won't eat up as much RAM
             # dataset = dataset.set_index('mmsi', npartitions=npartitions, shuffle='disk')
 
             # Partitions will be split by MMSI, so the below just further sorts them by time
-            dataset = dataset.map_partitions(func = (lambda p: p.sort_values(['mmsi','base_datetime'])),
-                                             meta = dataset.partitions[0].compute())
+            dataset = dataset.map_partitions(func=(lambda p: p.sort_values(['mmsi', 'base_datetime'])),
+                                             meta=dataset.partitions[0].compute())
 
             # Save sorted df to temp path
             dd.to_parquet(dataset, tmp_dir_2, schema='infer')
@@ -328,7 +341,8 @@ class Cleaner(ProcessingStep):
         :param dataset: Dataset to rename
         :return: Dataset with renamed columns
         """
-        dataset = dataset.rename(columns={'TranscieverClass': 'TransceiverClass', 'BaseDateTime': 'BaseDatetime'})
+        dataset = dataset.rename(
+            columns={'TranscieverClass': 'TransceiverClass', 'BaseDateTime': 'BaseDatetime'})
         dataset.columns = dataset.columns.map(to_snake_case)
         return dataset
 
@@ -354,10 +368,9 @@ class Cleaner(ProcessingStep):
         partition = partition[
             (first_three >= 201) &
             (first_three <= 775)
-            ]
+        ]
         num_invalid_mmsis = original_len - len(partition)
         return partition, num_invalid_mmsis
-
 
     def _correct_negatives(self, partition):
         """
@@ -394,7 +407,7 @@ class Cleaner(ProcessingStep):
 
         return partition
 
-    def _remove_invalid_messages(self, partition, trajectories_are_complete = True):
+    def _remove_invalid_messages(self, partition, trajectories_are_complete=True):
         """
         Remove messages that fail to meet various conditions
 
@@ -455,7 +468,8 @@ class Cleaner(ProcessingStep):
         prev_lat_lon = partition[['lat', 'lon']][:-1].reset_index(drop=True)
         has_moved = (lat_lon - prev_lat_lon).abs().sum(axis=1) != 0
         has_moved = pd_append([False, has_moved])
-        partition = partition[has_moved | this_is_start_of_new_track].reset_index(drop=True)
+        partition = partition[has_moved |
+                              this_is_start_of_new_track].reset_index(drop=True)
         del this_is_start_of_new_track, prev_time_gap, timestamp, prev_timestamp, lat_lon, prev_lat_lon, has_moved
         stationary_ships = original_len - len(partition)
 
@@ -466,22 +480,23 @@ class Cleaner(ProcessingStep):
 
         # Filter out bad headings
         valid_heading = (
-                ((partition['heading'] <= 360) &
-                 (partition['heading'] >= 0)) |
-                partition['heading'].isna()
+            ((partition['heading'] <= 360) &
+             (partition['heading'] >= 0)) |
+            partition['heading'].isna()
         ).reset_index(drop=True)
         partition = partition[valid_heading].reset_index(drop=True)
         del valid_heading
 
         # Filter out bad COGs
         valid_cog = (
-                (partition['cog'] <= 360) &
-                (partition['cog'] >= 0)
+            (partition['cog'] <= 360) &
+            (partition['cog'] >= 0)
         ).reset_index(drop=True)
         partition = partition[valid_cog].reset_index(drop=True)
         del valid_cog
 
-        bad_sog_cog_or_heading = original_len - len(partition) - stationary_ships
+        bad_sog_cog_or_heading = original_len - \
+            len(partition) - stationary_ships
 
         # this is done iteratively as it may be the case that when an outlier message is removed, the message before
         # or message after now becomes an outlier message as well
@@ -490,32 +505,39 @@ class Cleaner(ProcessingStep):
             previous_len = len(partition)
 
             # Calculate how fast ship was going
-            prev_lat_lon = partition[['lat', 'lon']][:-2].reset_index(drop=True)
+            prev_lat_lon = partition[['lat', 'lon']
+                                     ][:-2].reset_index(drop=True)
             lat_lon = partition[['lat', 'lon']][1:-1].reset_index(drop=True)
             next_lat_lon = partition[['lat', 'lon']][2:].reset_index(drop=True)
-            prev_nm_traveled = haversine_vector(prev_lat_lon, lat_lon, unit=Unit.NAUTICAL_MILES)
-            next_nm_traveled = haversine_vector(lat_lon, next_lat_lon, unit=Unit.NAUTICAL_MILES)
+            prev_nm_traveled = haversine_vector(
+                prev_lat_lon, lat_lon, unit=Unit.NAUTICAL_MILES)
+            next_nm_traveled = haversine_vector(
+                lat_lon, next_lat_lon, unit=Unit.NAUTICAL_MILES)
             del prev_lat_lon, next_lat_lon, lat_lon
 
             prev_time_gap = (partition['base_datetime'][1:-1].reset_index(drop=True)
-                             - partition['base_datetime'][:-2].reset_index(drop=True)).dt.total_seconds() / 60 / 60 # in hours
+                             - partition['base_datetime'][:-2].reset_index(drop=True)).dt.total_seconds() / 60 / 60  # in hours
             next_time_gap = (partition['base_datetime'][2:].reset_index(drop=True)
-                             - partition['base_datetime'][1:-1].reset_index(drop=True)).dt.total_seconds() / 60 / 60 # in hours
+                             - partition['base_datetime'][1:-1].reset_index(drop=True)).dt.total_seconds() / 60 / 60  # in hours
 
-            prev_empirical_knots = pd_append([0, prev_nm_traveled / prev_time_gap, 0])
-            next_empirical_knots = pd_append([0, next_nm_traveled / next_time_gap, 0])
+            prev_empirical_knots = pd_append(
+                [0, prev_nm_traveled / prev_time_gap, 0])
+            next_empirical_knots = pd_append(
+                [0, next_nm_traveled / next_time_gap, 0])
             del prev_nm_traveled, next_nm_traveled
 
             prev_time_gap = pd_append([0, prev_time_gap, 0])
             next_time_gap = pd_append([0, next_time_gap, 0])
 
-            new_ship = partition['mmsi'][1:].reset_index(drop=True) != partition['mmsi'][:-1].reset_index(drop=True)
+            new_ship = partition['mmsi'][1:].reset_index(
+                drop=True) != partition['mmsi'][:-1].reset_index(drop=True)
             new_ship = pd_append([True, new_ship])
             partition['new_ship'] = new_ship
 
-            this_is_first_ts = partition['new_ship'] | (prev_time_gap > (config.new_trajectory_time_gap / 60 / 60))
+            this_is_first_ts = partition['new_ship'] | (
+                prev_time_gap > (config.new_trajectory_time_gap / 60 / 60))
             this_is_last_ts = pd_append([partition['new_ship'][1:], True]) | (
-                    next_time_gap > (config.new_trajectory_time_gap / 60 / 60))
+                next_time_gap > (config.new_trajectory_time_gap / 60 / 60))
             del prev_time_gap, next_time_gap
 
             # Remove if the empirical speed between this and the previous message
@@ -525,12 +547,13 @@ class Cleaner(ProcessingStep):
             # anchored
             if trajectories_are_complete:
                 valid_speed = ~(
+                    (
                         (
-                                (
-                                        (prev_empirical_knots > config.empirical_speed_cutoff) | this_is_first_ts)
-                                        & ((next_empirical_knots > config.empirical_speed_cutoff) | this_is_last_ts)
-                        ) |
-                        ((prev_empirical_knots < 0.01) & ~(this_is_first_ts | this_is_last_ts))
+                            (prev_empirical_knots > config.empirical_speed_cutoff) | this_is_first_ts)
+                        & ((next_empirical_knots > config.empirical_speed_cutoff) | this_is_last_ts)
+                    ) |
+                    ((prev_empirical_knots < 0.01) & ~
+                     (this_is_first_ts | this_is_last_ts))
                 )
             else:
                 # If the trajectories aren't full yet, this means that a message having a true value for
@@ -542,11 +565,12 @@ class Cleaner(ProcessingStep):
                 # The second usage of this_is_first_ts/this_is_last_ts is okay to keep in, because it is making sure
                 # first_ts/last_ts messages are considered valid, which is what we want in the first past.
                 valid_speed = ~(
-                        (
-                                (prev_empirical_knots > config.empirical_speed_cutoff)
-                                & (next_empirical_knots > config.empirical_speed_cutoff)
-                        ) |
-                        ((prev_empirical_knots < 0.01) & ~(this_is_first_ts | this_is_last_ts))
+                    (
+                        (prev_empirical_knots > config.empirical_speed_cutoff)
+                        & (next_empirical_knots > config.empirical_speed_cutoff)
+                    ) |
+                    ((prev_empirical_knots < 0.01) & ~
+                     (this_is_first_ts | this_is_last_ts))
                 )
 
             del prev_empirical_knots, next_empirical_knots
@@ -555,7 +579,8 @@ class Cleaner(ProcessingStep):
         if mmsi_index:
             partition = partition.set_index('mmsi')
 
-        bad_empirical_speed = original_len - len(partition) - bad_sog_cog_or_heading - stationary_ships
+        bad_empirical_speed = original_len - \
+            len(partition) - bad_sog_cog_or_heading - stationary_ships
         if trajectories_are_complete:
             return partition
         else:
@@ -580,12 +605,16 @@ class Cleaner(ProcessingStep):
 
         # Replace text status with numeric ones
         partition = partition.copy()
-        replacement_dict = {L.lower(): S for i, (S, L) in config.statuses.iterrows()}
-        partition['status'] = partition['status'].fillna('-1').str.lower().replace(replacement_dict).astype(int)
+        replacement_dict = {L.lower(): S for i, (S, L)
+                            in config.statuses.iterrows()}
+        partition['status'] = partition['status'].fillna(
+            '-1').str.lower().replace(replacement_dict).astype(int)
 
         # Filte to only statuses we are interested in
-        desired_statuses_numeric = [replacement_dict[s] for s in config.desired_statuses]
-        partition = partition[partition['status'].isin(desired_statuses_numeric)]
+        desired_statuses_numeric = [replacement_dict[s]
+                                    for s in config.desired_statuses]
+        partition = partition[partition['status'].isin(
+            desired_statuses_numeric)]
 
         num_unwanted_statuses = original_len - len(partition)
         return partition, num_unwanted_statuses
@@ -605,12 +634,16 @@ class Cleaner(ProcessingStep):
         original_len = len(partition)
 
         # Replace text numeric type with text ones
-        replacement_dict = {VT: G.lower().replace('/', ' or ') for i, (G, VT, d) in config.types.iterrows()}
-        partition['vessel_type'] = partition['vessel_type'].fillna(-1).astype(int).astype(str)
-        partition['vessel_group'] = partition['vessel_type'].replace(replacement_dict)
+        replacement_dict = {VT: G.lower().replace('/', ' or ')
+                            for i, (G, VT, d) in config.types.iterrows()}
+        partition['vessel_type'] = partition['vessel_type'].fillna(
+            -1).astype(int).astype(str)
+        partition['vessel_group'] = partition['vessel_type'].replace(
+            replacement_dict)
 
         # Filter out vessel types we don't want
-        partition = partition[partition['vessel_group'].isin(config.vessel_types)]
+        partition = partition[partition['vessel_group'].isin(
+            config.vessel_types)]
 
         num_unwanted_vts = original_len - len(partition)
         return partition, num_unwanted_vts
@@ -652,7 +685,8 @@ class Cleaner(ProcessingStep):
         ])
 
         partition['new_track'] = new_trajectory_id
-        partition['within_mmsi_id'] = partition.groupby('mmsi')['new_track'].apply(np.cumsum)
+        partition['within_mmsi_id'] = partition.groupby(
+            'mmsi')['new_track'].transform("cumsum")
 
         # Because track IDs are being created within each partition (without knowledge of the track IDs created in
         # other partitions), we need to make sure that they are not repeated across different partitions. I'm doing this
@@ -662,18 +696,19 @@ class Cleaner(ProcessingStep):
         # '2002', etc. (Although in reality they'll be much longer, to make sure there aren't any overlaps.)
         MAX_NUMBER_OF_TRACKS_PER_MMSI = 1000000
         if (partition['within_mmsi_id'] > MAX_NUMBER_OF_TRACKS_PER_MMSI).any():
-            raise ValueError(f'A MMSI has resulted in more than {MAX_NUMBER_OF_TRACKS_PER_MMSI:,} tracks. Please ' 
+            raise ValueError(f'A MMSI has resulted in more than {MAX_NUMBER_OF_TRACKS_PER_MMSI:,} tracks. Please '
                              f'increase the MAX_NUMBER_OF_TRACKS_PER_MMSI constant in order to guarantee that all '
                              f'track IDs are unique')
-        partition['track'] = partition['mmsi'].astype(int) * MAX_NUMBER_OF_TRACKS_PER_MMSI + partition['within_mmsi_id']
-        partition = partition.drop(columns = ['within_mmsi_id'])
+        partition['track'] = partition['mmsi'].astype(
+            int) * MAX_NUMBER_OF_TRACKS_PER_MMSI + partition['within_mmsi_id']
+        partition = partition.drop(columns=['within_mmsi_id'])
 
         if mmsi_index:
             partition = partition.set_index('mmsi')
 
         return partition
 
-    def _remove_unwanted_tracks(self, partition, trajectories_are_complete=True, min_time = None, max_time = None):
+    def _remove_unwanted_tracks(self, partition, trajectories_are_complete=True, min_time=None, max_time=None):
         """
         Remove tracks that do not meet the minimum time length requirement
 
@@ -687,26 +722,34 @@ class Cleaner(ProcessingStep):
         :return: The dataset, with short tracks removed
         """
 
-        aggregate = partition.groupby('track').agg({'base_datetime': ['min', 'max']})
-        aggregate['length'] = aggregate[('base_datetime', 'max')] - aggregate[('base_datetime', 'min')]
+        aggregate = partition.groupby('track').agg(
+            {'base_datetime': ['min', 'max']})
+        aggregate['length'] = aggregate[(
+            'base_datetime', 'max')] - aggregate[('base_datetime', 'min')]
 
         if trajectories_are_complete:
-            long_tracks = aggregate.index[aggregate['length'].dt.total_seconds() > config.min_track_length]
+            long_tracks = aggregate.index[aggregate['length'].dt.total_seconds(
+            ) > config.min_track_length]
             partition = partition[partition['track'].isin(long_tracks)]
             return partition
         else:
             original_len = len(partition)
-            time_since_beginning_of_dataset = aggregate[('base_datetime', 'min')] - min_time
-            time_until_end_of_dataset = max_time - aggregate[('base_datetime', 'max')]
+            time_since_beginning_of_dataset = aggregate[(
+                'base_datetime', 'min')] - min_time
+            time_until_end_of_dataset = max_time - \
+                aggregate[('base_datetime', 'max')]
 
             trajectory_could_be_incomplete = (
-                    (time_since_beginning_of_dataset.dt.total_seconds() <= config.new_trajectory_time_gap)
-                    | (time_until_end_of_dataset.dt.total_seconds() <= config.new_trajectory_time_gap))
+                (time_since_beginning_of_dataset.dt.total_seconds()
+                 <= config.new_trajectory_time_gap)
+                | (time_until_end_of_dataset.dt.total_seconds() <= config.new_trajectory_time_gap))
             long_or_unknown_tracks = aggregate.index[
-                (aggregate['length'].dt.total_seconds() > config.min_track_length)
+                (aggregate['length'].dt.total_seconds()
+                 > config.min_track_length)
                 | trajectory_could_be_incomplete
             ]
-            partition = partition[partition['track'].isin(long_or_unknown_tracks)]
+            partition = partition[partition['track'].isin(
+                long_or_unknown_tracks)]
             short_tracks = original_len - len(partition)
             return partition, short_tracks
 
@@ -732,12 +775,14 @@ class Cleaner(ProcessingStep):
         :return:
         """
         for dataset_name in ['test', 'train']:
-            logging.info(f'{dataset_name} dataset is starting with {len(self.datasets[dataset_name]):,} messages.')
+            logging.info(
+                f'{dataset_name} dataset is starting with {len(self.datasets[dataset_name]):,} messages.')
             partition = self.datasets[dataset_name]._partitions(0).compute()
             output_meta = self._process_partition(partition)
             self.datasets[dataset_name] = self.datasets[dataset_name].map_partitions(self._process_partition,
                                                                                      meta=output_meta)
-            self.datasets[dataset_name] = self.datasets[dataset_name].reset_index().set_index('track', sorted=True)
+            self.datasets[dataset_name] = self.datasets[dataset_name].reset_index(
+            ).set_index('track', sorted=True)
 
             if dataset_name == 'test':
                 self._save_dataset(dataset_name)
@@ -756,7 +801,8 @@ class Cleaner(ProcessingStep):
         :return:
         """
         tracks = self.datasets['train'].index.unique().compute()
-        tracks = np.random.choice(tracks, len(tracks), replace=False) # Reorder
+        tracks = np.random.choice(tracks, len(
+            tracks), replace=False)  # Reorder
 
         validation_size = int(self.validation_fraction * len(tracks))
         logging.info(f'Using {validation_size:,}/{len(tracks):,} tracks for the validation set'
@@ -785,7 +831,8 @@ class Cleaner(ProcessingStep):
         logging.info(f'{dataset_name} set saved to {out_path}')
         self.current_file = None
         self.datasets[dataset_name] = dd.read_parquet(out_path)
-        logging.info(f'{dataset_name} ended with {len(self.datasets[dataset_name]):,} messages')
+        logging.info(
+            f'{dataset_name} ended with {len(self.datasets[dataset_name]):,} messages')
         del self.datasets[dataset_name]
 
 
@@ -808,7 +855,8 @@ if __name__ == '__main__':
                         default=2, choices=[0, 1, 2, 3, 4],
                         help='Level of logging to use')
     parser.add_argument('-s', '--save_log', action='store_true')
-    parser.add_argument('--memory',type=str,choices=['conserve',None],default=None)
+    parser.add_argument('--memory', type=str,
+                        choices=['conserve', None], default=None)
 
     args = parser.parse_args()
 

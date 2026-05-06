@@ -12,17 +12,22 @@ from config.dataset_config import datasets
 from processing_step import ProcessingStep
 from utils import clear_path
 
+
 class WeatherAppender(ProcessingStep):
     """
     This class is used for joining the interpolated AIS messages to the weather dataset
     """
+
     def __init__(self):
         super().__init__()
         self._define_directories(
-            from_name='interpolated_with_destination' + ('_debug' if args.debug else ''),
-            to_name='interpolated_with_currents_stride_3' + ('_debug' if args.debug else '')
+            from_name='interpolated_with_destination' +
+            ('_debug' if args.debug else ''),
+            to_name='interpolated_with_currents_stride_3' +
+            ('_debug' if args.debug else '')
         )
-        self.weather_dir = os.path.join(self.box_and_year_dir, 'ocean_currents_aggregated')
+        self.weather_dir = os.path.join(
+            self.box_and_year_dir, 'ocean_currents_aggregated')
         self._initialize_logging(args.save_log, 'add_currents')
 
         self.unneeded_columns = [
@@ -42,11 +47,13 @@ class WeatherAppender(ProcessingStep):
         :return:
         """
         for dataset_name in ['test', 'valid', 'train']:
-            dataset_path = os.path.join(self.from_dir, f'{dataset_name}.parquet')
+            dataset_path = os.path.join(
+                self.from_dir, f'{dataset_name}.parquet')
             self.datasets[dataset_name] = dd.read_parquet(dataset_path)
             for col in self.unneeded_columns:
                 if col in self.datasets[dataset_name].columns:
-                    self.datasets[dataset_name] = self.datasets[dataset_name].drop(columns=col, axis=1)
+                    self.datasets[dataset_name] = self.datasets[dataset_name].drop(
+                        columns=col, axis=1)
             if args.debug:
                 self.datasets[dataset_name] = self.datasets[dataset_name].partitions[:1]
 
@@ -55,7 +62,8 @@ class WeatherAppender(ProcessingStep):
         else:
             self.datasets['weather'] = pd.read_csv(os.path.join(self.weather_dir,
                                                                 'weather_aggregated.csv'))
-            self.datasets['weather'] = self.datasets['weather'].set_index(['year'])
+            self.datasets['weather'] = self.datasets['weather'].set_index([
+                                                                          'year'])
 
             logging.info('File paths have been specified for dask')
 
@@ -67,11 +75,10 @@ class WeatherAppender(ProcessingStep):
         :param features: Second dataset specifying column names and desired datatypes for dataset
         :return:
         """
-        for col, dtype in features.iteritems():
+        for col, dtype in features.items():
             if str(partition[col].dtype) != dtype:
                 partition[col] = partition[col].astype(dtype)
         return partition
-
 
     def save(self):
         """
@@ -84,7 +91,7 @@ class WeatherAppender(ProcessingStep):
         :return:
         """
 
-        for dataset_name in ['test','valid','train']:
+        for dataset_name in ['test', 'valid', 'train']:
             out_path = os.path.join(self.to_dir, f'{dataset_name}.parquet')
             clear_path(out_path)
 
@@ -110,15 +117,14 @@ class WeatherAppender(ProcessingStep):
             partition = self.datasets[dataset_name]._partitions(0).compute()
             output_meta = self._change_data_sizes(partition, features)
             self.datasets[dataset_name] = self.datasets[dataset_name].map_partitions(self._change_data_sizes, features,
-                                                                                    meta=output_meta)
-            dd.to_parquet(self.datasets[dataset_name], out_path, schema='infer')
+                                                                                     meta=output_meta)
+            dd.to_parquet(self.datasets[dataset_name],
+                          out_path, schema='infer')
             dataset_len = len(dd.read_parquet(out_path))
             logging.info(
                 f'{dataset_name} dataset has {dataset_len:,} records after joining to weather data')
 
-
             logging.info(f'{dataset_name} set saved to {out_path}')
-
 
     def calculate(self):
         """
@@ -130,30 +136,40 @@ class WeatherAppender(ProcessingStep):
             raise ValueError('Moving currents windows have been deprecated')
         else:
             # Iterate through train/test/valid
-            for dataset_name in ['train','test','valid']:
+            for dataset_name in ['train', 'test', 'valid']:
                 dataset_len = len(self.datasets[dataset_name])
-                logging.info(f'Length of {dataset_name} set is {dataset_len:,} before merging with weather')
+                logging.info(
+                    f'Length of {dataset_name} set is {dataset_len:,} before merging with weather')
 
                 # Get hour/day where message occurred (year and month are already calculated)
                 # (hour is rounded down to every 3rd hour, as the ocean current forecasts only occur every 3 hours, on
                 # the hour)
-                self.datasets[dataset_name]['hour'] = dd.to_datetime(self.datasets[dataset_name]['base_datetime'], unit='s').dt.hour // 3 * 3
-                self.datasets[dataset_name]['day'] = dd.to_datetime(self.datasets[dataset_name]['base_datetime'], unit='s').dt.day
-                idx = self.datasets[dataset_name].index
+                self.datasets[dataset_name]['hour'] = dd.to_datetime(
+                    self.datasets[dataset_name]['base_datetime'], unit='s').dt.hour // 3 * 3
+                self.datasets[dataset_name]['day'] = dd.to_datetime(
+                    self.datasets[dataset_name]['base_datetime'], unit='s').dt.day
 
+                self.datasets[dataset_name] = self.datasets[dataset_name].reset_index()
                 # Join to weather data
                 self.datasets[dataset_name] = dd.merge(self.datasets[dataset_name],
-                                                  self.datasets['weather'],
-                                                  left_on =['year','month','day','hour'],
-                                                  right_on=['year','month','day','hour'],
-                                                  how='left')
-                self.datasets[dataset_name].index = idx
-                self.datasets[dataset_name] = self.datasets[dataset_name].drop(columns=['hour','day'])
+                                                       self.datasets['weather'],
+                                                       left_on=[
+                                                           'year', 'month', 'day', 'hour'],
+                                                       right_on=[
+                                                           'year', 'month', 'day', 'hour'],
+                                                       how='left')
+
+                self.datasets[dataset_name] = self.datasets[dataset_name].set_index(
+                    "track")
+
+                self.datasets[dataset_name] = self.datasets[dataset_name].drop(columns=[
+                                                                               'hour', 'day'])
 
                 # If this is the training set, calculate the mean u/v values for each lat/lon location, so we can use
                 # these values for imputation
                 if dataset_name == 'train':
-                    means = self.datasets[dataset_name].mean(axis=0).round().astype(np.int16).compute()
+                    means = self.datasets[dataset_name].select_dtypes(include='number') \
+                        .mean().round().astype(np.int16).compute()
 
                 # Perform the mean imputation
                 nas = self.datasets[dataset_name].isna().sum(axis=0).compute()
@@ -172,11 +188,11 @@ class WeatherAppender(ProcessingStep):
                 means_dict = {c: means[c] for c in means.index if c in na_cols}
 
                 # We only need a single "weather_is_imputed" col here, as imputation happens for all the columns at once
-                self.datasets[dataset_name]['weather_is_imputed'] = self.datasets[dataset_name][na_cols].isna().any(axis=1)
+                self.datasets[dataset_name]['weather_is_imputed'] = self.datasets[dataset_name][na_cols].isna(
+                ).any(axis=1)
 
-                self.datasets[dataset_name] = self.datasets[dataset_name].fillna(means_dict)
-
-
+                self.datasets[dataset_name] = self.datasets[dataset_name].fillna(
+                    means_dict)
 
             if len(self.datasets['train'].columns) != len(self.datasets['test'].columns):
                 raise ValueError(
@@ -188,9 +204,6 @@ class WeatherAppender(ProcessingStep):
                     'There was an error in preprocessing and the train and valid sets have differing numbers of'
                     'columns. This is likely due to the NA filling code in buoy_appender.py, which should '
                     'be edited to account for your use case.')
-
-
-
 
         if len(self.datasets['train'].columns) != len(self.datasets['test'].columns):
             raise ValueError('There was an error in preprocessing and the train and test sets have differing numbers of'

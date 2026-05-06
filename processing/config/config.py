@@ -52,7 +52,8 @@ length_into_the_future = int(3 * 60 * 60 / interpolation_time_gap) - 1
 
 # The length of time needed for a track to be kept in the dataset, in seconds. Should not be edited directly
 global min_track_length
-min_track_length = (length_of_history + length_into_the_future) * interpolation_time_gap
+min_track_length = (length_of_history +
+                    length_into_the_future) * interpolation_time_gap
 
 # The vessel groups to keep in the analysis.
 # Other valid vessel types that may be used are 'other' and 'military'
@@ -85,11 +86,10 @@ global currents_variables
 currents_variables = ['water_u', 'water_v']
 
 
-
 # Categorical columns that need to be one hot encoded. Only change this if you change preprocessing to add in other
 # columns.
 global categorical_columns
-categorical_columns = ['vessel_group','destination_cluster']
+categorical_columns = ['vessel_group', 'destination_cluster']
 
 # Used for preprocessing of currents dataset. All other values have been deprecated
 global currents_window
@@ -102,6 +102,8 @@ global types
 types = pd.read_csv('config/vessel_type_codes.csv')
 
 # Function for setting the log level
+
+
 def set_log_level(level):
     global log_level
     if level == 0:

@@ -19,6 +19,7 @@ class Interpolator(ProcessingStep):
     Class for performing the interpolation preprocessing step, by linearly interpolating between messages so that
     they are at a regular interval.
     """
+
     def __init__(self, method):
         super().__init__()
         self._define_directories(
@@ -70,9 +71,11 @@ class Interpolator(ProcessingStep):
         :return:
         """
         for dataset_name in ['test', 'train', 'valid']:
-            dataset_path = os.path.join(self.from_dir, f'{dataset_name}.parquet')
+            dataset_path = os.path.join(
+                self.from_dir, f'{dataset_name}.parquet')
             self.datasets[dataset_name] = dd.read_parquet(dataset_path)
-            logging.info(f'{dataset_name} set starting with {self.datasets[dataset_name].shape[0].compute():,} messages')
+            logging.info(
+                f'{dataset_name} set starting with {self.datasets[dataset_name].shape[0].compute():,} messages')
 
         logging.debug('File paths have been specified for dask')
 
@@ -90,9 +93,12 @@ class Interpolator(ProcessingStep):
         for dataset_name in ['test', 'train', 'valid']:
             out_path = os.path.join(self.to_dir, f'{dataset_name}.parquet')
             self.current_file = out_path
-            dd.to_parquet(self.datasets[dataset_name + '_interpolated'], out_path, schema='infer')
-            logging.info(f'{dataset_name} contains {self.datasets[dataset_name+ "_interpolated"].shape[0].compute():,} messages after interpolation')
-            logging.debug(f'Interpolation complete for {dataset_name} set and dataset saved to {out_path}')
+            dd.to_parquet(
+                self.datasets[dataset_name + '_interpolated'], out_path, schema='infer')
+            logging.info(
+                f'{dataset_name} contains {self.datasets[dataset_name+ "_interpolated"].shape[0].compute():,} messages after interpolation')
+            logging.debug(
+                f'Interpolation complete for {dataset_name} set and dataset saved to {out_path}')
             self.current_file = None
 
     def interpolate(self):
@@ -109,8 +115,8 @@ class Interpolator(ProcessingStep):
             self.datasets[dataset_name]['base_datetime'] = self.datasets[dataset_name]['base_datetime'].astype(
                 int) / 10 ** 9
 
-            out_meta = self.datasets[dataset_name].dtypes.append(pd.Series(self.columns_to_calculate.values(),
-                                                                           index=self.columns_to_calculate.keys()))
+            out_meta = self.datasets[dataset_name].dtypes._append(pd.Series(self.columns_to_calculate.values(),
+                                                                            index=self.columns_to_calculate.keys()))
             out_meta = [(i, z) for i, z in out_meta.items()]
 
             self.datasets[dataset_name + '_interpolated'] = self.datasets[dataset_name].map_partitions(
@@ -153,7 +159,8 @@ class Interpolator(ProcessingStep):
         # Find the times that we want to sample at
         first_ts = track['base_datetime'].iloc[0]
         last_ts = track['base_datetime'].iloc[-1]
-        times_to_sample = np.arange(first_ts, last_ts + 1, config.interpolation_time_gap)
+        times_to_sample = np.arange(
+            first_ts, last_ts + 1, config.interpolation_time_gap)
 
         # Because categorical variables can't be interpolated linearly, we are instead taking the value from the most
         # recent timestamp. The categorical_interpolator object just finds the index of the most recent timestamp (in
@@ -171,10 +178,12 @@ class Interpolator(ProcessingStep):
                 interpolated[col] = times_to_sample
             elif col in self.columns_to_interpolate:
                 # If this should be interpolated, do so
-                interpolated[col] = self._interpolator(times_to_sample, track['base_datetime'], track[col])
+                interpolated[col] = self._interpolator(
+                    times_to_sample, track['base_datetime'], track[col])
             elif col in self.columns_to_use_most_recent:
                 # If this column is categorical and can change, then use the most recent value
-                interpolated[col] = [track[col].iloc[int(i)] for i in most_recent_idx]
+                interpolated[col] = [
+                    track[col].iloc[int(i)] for i in most_recent_idx]
             elif col in self.stable_columns:
                 # If this column is categorical but should be stable over the whole dataset, just use the first value
                 interpolated[col] = track[col].iloc[0]
@@ -184,11 +193,14 @@ class Interpolator(ProcessingStep):
         # Add year and month variables
         for col in self.columns_to_calculate.keys():
             if col == 'year':
-                interpolated[col] = pd.to_datetime(interpolated['base_datetime'] * 10 ** 9).year
+                interpolated[col] = pd.to_datetime(
+                    interpolated['base_datetime'] * 10 ** 9).year
             elif col == 'month':
-                interpolated[col] = pd.to_datetime(interpolated['base_datetime'] * 10 ** 9).month
+                interpolated[col] = pd.to_datetime(
+                    interpolated['base_datetime'] * 10 ** 9).month
             else:
-                raise ValueError(f'Please specify how to interpolate column {col}')
+                raise ValueError(
+                    f'Please specify how to interpolate column {col}')
 
         interpolated = pd.DataFrame(interpolated)
         return interpolated
@@ -220,7 +232,6 @@ if __name__ == '__main__':
         dask.config.set(scheduler='single-threaded')
     else:
         dask.config.set(scheduler='processes')
-
 
     interpolator = Interpolator(args.method)
     interpolator.load()

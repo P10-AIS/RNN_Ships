@@ -48,8 +48,9 @@ class Normalizer():
         }
         cols_to_use = columns['column'][columns['being_used']]
         non_bools = cols_to_use[columns.dtype != 'bool']
-        multi_cols = ['speed','water','mmsi_neighbor','lat_neighbor','lon_neighbor','time_since_neighbor']
-        ranges = {k: [np.Inf, -np.Inf] for k in multi_cols}
+        multi_cols = ['speed', 'water', 'mmsi_neighbor',
+                      'lat_neighbor', 'lon_neighbor', 'time_since_neighbor']
+        ranges = {k: [np.inf, -np.inf] for k in multi_cols}
         if type(X) == DiskArray:
             mins, maxes = X._calculate_min_max()
         for col in non_bools:
@@ -62,8 +63,10 @@ class Normalizer():
                 }
                 for mc in multi_cols:
                     if mc in col:
-                        ranges[mc][0] = min(normalization_factors[col]['min'], ranges[mc][0])
-                        ranges[mc][1] = max(normalization_factors[col]['max'], ranges[mc][1])
+                        ranges[mc][0] = min(
+                            normalization_factors[col]['min'], ranges[mc][0])
+                        ranges[mc][1] = max(
+                            normalization_factors[col]['max'], ranges[mc][1])
 
         for col in non_bools:
             for mc in multi_cols:
@@ -94,8 +97,9 @@ class Normalizer():
                     if range != 0:
                         dist_above_min = (data[:, :, col['idx']] - col['min'])
                         data[:, :, col['idx']] = dist_above_min / range
-                    else: # if the variable doesn't vary at all (which can happen when debugging), just set it to 0
-                        data[:,:, col['idx']] = 0
+                    # if the variable doesn't vary at all (which can happen when debugging), just set it to 0
+                    else:
+                        data[:, :, col['idx']] = 0
 
         else:
             for col in normalization_factors.values():
@@ -126,11 +130,13 @@ class Normalizer():
             for col in normalization_factors.values():
                 if np.any(col['idx'] == idxs):
                     range = (col['max'] - col['min'])
-                    data[:, :, col['idx']] = data[:, :, col['idx']] * range + col['min']
+                    data[:, :, col['idx']] = data[:, :,
+                                                  col['idx']] * range + col['min']
         else:
             for col in normalization_factors.values():
                 if np.any(col['idx'] == idxs):
                     range = (col['max'] - col['min'])
-                    data[:, col['idx']] = data[:, col['idx']] * range + col['min']
+                    data[:, col['idx']] = data[:, col['idx']] * \
+                        range + col['min']
 
         return data
