@@ -36,7 +36,7 @@ global box_and_year_dir
 # Name of dataset being used
 global dataset_name
 # dataset_name = 'formatted_with_currents_stride_3'
-dataset_name = 'crate_data'
+dataset_name = 'crate_formatted'
 
 # Whether logging should be used
 global logging
@@ -49,4 +49,4 @@ host = gethostname()
 # Categorical columns that are one hot encoded. Only change this if you change preprocessing to add in other
 # columns.
 global categorical_columns
-categorical_columns = ['vessel_group']
+categorical_columns = []

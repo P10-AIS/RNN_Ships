@@ -106,10 +106,12 @@ class DataLoader():
             else:
                 self.run_config[k] = None
 
-        self.run_config['formatted_dir'] = os.path.join(self.config.data_directory, f'{self.config.dataset_config.lat_1}_{self.config.dataset_config.lat_2}_'
-                                                        f'{self.config.dataset_config.lon_1}_{self.config.dataset_config.lon_2}_'
-                                                        f'{self.config.start_year}_{self.config.end_year}',
-                                                        self.config.dataset_name)
+        # self.run_config['formatted_dir'] = os.path.join(self.config.data_directory, f'{self.config.dataset_config.lat_1}_{self.config.dataset_config.lat_2}_'
+        #                                                 f'{self.config.dataset_config.lon_1}_{self.config.dataset_config.lon_2}_'
+        #                                                 f'{self.config.start_year}_{self.config.end_year}',
+        #                                                 self.config.dataset_name)
+        self.run_config['formatted_dir'] = os.path.join(
+            self.config.data_directory, self.config.dataset_name)
         self.run_config['dataset_name'] = config.dataset_name
 
         self.run_config['normalization_factors'] = None
@@ -643,7 +645,12 @@ class DataLoader():
         transformations = self.run_config['transformations'][:normalization_step]
 
         data_dir = os.path.join(self.run_config['formatted_dir'],
-                                f'train_long_term_train')
+                                f'train_long_term')
+
+        if not os.path.exists(data_dir):
+            raise ValueError(
+                f'The directory {data_dir} does not exist. Please make sure the data has been formatted correctly and that the formatted_dir field in the run config is correct.')
+
         self.dataset = loading.read_ts_data(
             data_dir, self.run_config['time'], 'x', dtype='float32', conserve_memory=self.conserve_memory)
         self._apply_transformations('x', transformations)
@@ -667,7 +674,7 @@ class DataLoader():
         :return:
         """
         data_dir = os.path.join(self.run_config['formatted_dir'],
-                                f'{time_period}_long_term_{sliding_window_method}')
+                                f'{time_period}_long_term')
 
         self.dataset = loading.read_ts_data(
             data_dir, self.run_config['time'], x_or_y, dtype='float32', conserve_memory=self.conserve_memory)
@@ -930,8 +937,12 @@ class DataLoader():
 
         :return:
         """
-        data_dir = os.path.join(self.run_config['formatted_dir'],
-                                f'test_long_term_test')
+        # data_dir = os.path.join(self.run_config['formatted_dir'],
+        #                         f'test_long_term_test')
+
+        folder_name = os.listdir(self.run_config['formatted_dir'])[0]
+        data_dir = os.path.join(self.run_config['formatted_dir'], folder_name)
+
         X = loading.read_ts_data(
             data_dir, self.run_config['time'], 'x', dtype='float32', conserve_memory=self.conserve_memory)
         self.run_config['original_x_shape'] = [None] + list(X.shape[1:])

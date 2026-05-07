@@ -3,8 +3,8 @@ class DatasetConfig():
                  lat_1, lat_2, lon_1, lon_2,
                  sliding_window_movement,
                  depth_1=0, depth_2=0,
-                 min_pts_to_try = None, eps_to_try = None,
-                 min_pts_to_use = None, eps_to_use = None):
+                 min_pts_to_try=None, eps_to_try=None,
+                 min_pts_to_use=None, eps_to_use=None):
         self.dataset_name = dataset_name
         self.lat_1 = min(lat_1, lat_2)
         self.lat_2 = max(lat_1, lat_2)
@@ -23,7 +23,6 @@ class DatasetConfig():
         self.eps_to_use = eps_to_use
         self.depth_1 = depth_1
         self.depth_2 = depth_2
-
 
 
 datasets = {
@@ -47,10 +46,10 @@ datasets = {
             dataset_name='california_coast',
             lat_1=33.40, lon_1=-122.00, lat_2=36.40, lon_2=-118.50,
             sliding_window_movement=15 * 60,
-            min_pts_to_try = [4, 10, 20, 50, 100, 250, 500],
+            min_pts_to_try=[4, 10, 20, 50, 100, 250, 500],
             eps_to_try=[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
-            min_pts_to_use = 50,
-            eps_to_use = 3
+            min_pts_to_use=50,
+            eps_to_use=3
         ),
     'new_york':
         DatasetConfig(
@@ -64,6 +63,24 @@ datasets = {
                         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
                         1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5,
                         6, 7, 8, 9, 10],
+            min_pts_to_use=50, eps_to_use=3
+        ),
+    'crate_dk':
+        DatasetConfig(
+            dataset_name='crate_dk',
+            lat_1=54.00, lon_1=-3.25, lat_2=58.5, lon_2=-17,
+            sliding_window_movement=60 * 60,
+            min_pts_to_try=[],
+            eps_to_try=[],
+            min_pts_to_use=50, eps_to_use=3
+        ),
+    'crate_us':
+        DatasetConfig(
+            dataset_name='crate_us',
+            lat_1=54.00, lon_1=-3.25, lat_2=58.5, lon_2=-17,
+            sliding_window_movement=60 * 60,
+            min_pts_to_try=[],
+            eps_to_try=[],
             min_pts_to_use=50, eps_to_use=3
         )
 }

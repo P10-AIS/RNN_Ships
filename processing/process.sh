@@ -10,4 +10,5 @@
 # # python destination_appender.py california_coast -l 4 -s &&
 # python current_appender.py california_coast -l 4 -s &&
 # python sliding_window.py california_coast -l 4 -s &&
+python force_appender.py &&
 python formatter.py california_coast -l 4 -s

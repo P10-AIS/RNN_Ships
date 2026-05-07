@@ -26,19 +26,19 @@ class Formatter(ProcessingStep):
         self._define_directories(
             from_name='windowed_with_currents_stride_3' +
             ('_debug' if args.debug else ''),
-            to_name='formatted_with_currents_stride_3' +
+            to_name='formatted' +
             ('_debug' if args.debug else '')
         )
+
+        self.from_dir = os.path.join(config.data_directory, "crate_valid")
+        self.to_dir = os.path.join(config.data_directory, "crate_formatted")
+
         self._initialize_logging(args.save_log, 'format_with_weather_and_time')
 
         logging.info(
             f'categorical_columns used are {config.categorical_columns}')
-        self.dataset_names = [
-            'train_long_term_train',
-            'test_long_term_test',
-            'valid_long_term_train',
-            'valid_long_term_test'
-        ]
+        self.dataset_names = [file_name.split('.')[0] for file_name in os.listdir(
+            self.from_dir) if file_name.endswith('.parquet')]
         self.timesteps_into_the_future = None
 
     def load(self):
@@ -250,7 +250,8 @@ class Formatter(ProcessingStep):
         The reshape is instead applied per-partition inside save().
         """
         for dataset_name in self.dataset_names:
-            self._one_hot(dataset_name)
+            if config.categorical_columns:
+                self._one_hot(dataset_name)
 
             self.features = self.datasets[dataset_name].dtypes.astype(str)
             self.features = self.features.replace(

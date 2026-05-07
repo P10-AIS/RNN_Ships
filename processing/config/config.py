@@ -6,6 +6,24 @@ import pandas as pd
 global data_directory
 data_directory = '../data/'
 
+global crate_dir
+crate_dir = '../crate_data/'
+
+global force_datasets_paths
+force_datasets_paths = [
+    '3928d0d14f62463f.npz',
+    # '2019_02.npz',
+]
+
+global ais_datasets_path
+ais_datasets_path = 'combined-9fd079d577172ac6-danish-december.npz'
+
+global train_val_split_percent
+train_val_split_percent = 0.8
+
+global should_split_data  # True if training, False if testing
+should_split_data = True
+
 global dataset_config
 
 # Define start/end years to look at. Currently, the earliest supported year is 2015. Data prior to 2015 uses a different
@@ -89,7 +107,7 @@ currents_variables = ['water_u', 'water_v']
 # Categorical columns that need to be one hot encoded. Only change this if you change preprocessing to add in other
 # columns.
 global categorical_columns
-categorical_columns = ['vessel_group']
+categorical_columns = []
 
 # Used for preprocessing of currents dataset. All other values have been deprecated
 global currents_window

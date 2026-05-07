@@ -17,6 +17,15 @@
             ]
         },
         {
+            "name": "Test force_appender",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/processing/force_appender.py",
+            "cwd": "${workspaceFolder}/processing",
+            "console": "integratedTerminal",
+            "python": "/opt/conda/envs/ships_processing_2/bin/python",
+        },
+        {
             "name": "Cleaner (conda ships_processing_2)",
             "type": "debugpy",
             "request": "launch",

@@ -3,4 +3,4 @@ __pycache__
 mlruns
 data
 .DS_Store
-
+crate_data
